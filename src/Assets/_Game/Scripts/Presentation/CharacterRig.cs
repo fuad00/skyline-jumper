@@ -28,12 +28,13 @@ namespace StickmanJumper.Presentation
             public Part Parent;
             public bool Canopy;
             public int ClipIndex = -1; // bone index in the current clip, −1 = not in it
-            public bool Detached;
         }
 
         readonly Transform _root, _spin, _skeleton;
         readonly Dictionary<string, Part> _parts = new Dictionary<string, Part>();
         readonly List<Part> _list = new List<Part>();
+        readonly List<CharacterClip> _clips = new List<CharacterClip>();
+        readonly Material _material;
         readonly float _mpp;
         readonly int _sortBase;
         CharacterClip _clip;
@@ -41,10 +42,17 @@ namespace StickmanJumper.Presentation
         bool _loop = true, _canopyVisible, _ragdoll;
         float _canopyOpen = 1f;
 
-        Transform _looseCanopy, _ragdollRoot;
-        SpriteRenderer[] _looseRenderers;
-        Vector2 _looseVelocity;
-        float _looseAge, _looseSpin;
+        Transform _ragdollRoot;
+
+        /// <summary>Отпавший или оторванный купол: летит сам и тает.</summary>
+        sealed class LooseCanopy
+        {
+            public Transform T;
+            public SpriteRenderer[] Renderers;
+            public Vector2 Velocity;
+            public float Age, Spin;
+        }
+        readonly List<LooseCanopy> _loose = new List<LooseCanopy>();
 
         public Transform Root => _root;
         public CharacterClip Clip => _clip;
@@ -57,6 +65,7 @@ namespace StickmanJumper.Presentation
         {
             _mpp = metersPerPixel;
             _sortBase = sortBase;
+            _material = material;
             _root = new GameObject("Stickman").transform;
             _root.SetParent(parent, false);
             _spin = new GameObject("Spin").transform;
@@ -69,6 +78,7 @@ namespace StickmanJumper.Presentation
             foreach (var clip in clips)
             {
                 if (clip == null) continue;
+                _clips.Add(clip);
                 for (int i = 0; i < clip.Bones.Length; i++) Ensure(clip, i, material);
             }
         }
@@ -97,7 +107,9 @@ namespace StickmanJumper.Presentation
 
         public void Destroy()
         {
-            if (_looseCanopy != null) UnityEngine.Object.Destroy(_looseCanopy.gameObject);
+            foreach (var c in _loose)
+                if (c.T != null) UnityEngine.Object.Destroy(c.T.gameObject);
+            _loose.Clear();
             if (_ragdollRoot != null) UnityEngine.Object.Destroy(_ragdollRoot.gameObject);
             if (_root != null) UnityEngine.Object.Destroy(_root.gameObject);
         }
@@ -152,7 +164,6 @@ namespace StickmanJumper.Presentation
             float frame = _clip.FrameAt(_time, _loop);
             foreach (var p in _list)
             {
-                if (p.Detached) continue;
                 CharacterClip.Key k = default;
                 bool on = p.ClipIndex >= 0 && !(p.Canopy && !_canopyVisible) && CharacterClip.Sample(_clip.Bones[p.ClipIndex].Keys, frame, out k);
                 if (p.T.gameObject.activeSelf != on) p.T.gameObject.SetActive(on);
@@ -169,7 +180,7 @@ namespace StickmanJumper.Presentation
         /// <summary>Раскрытие: купол со стропами растёт из держателя над головой — сначала вверх, потом вширь.</summary>
         void UnfoldCanopy()
         {
-            if (_canopyOpen >= 1f || !_parts.TryGetValue("para", out var para) || para.Detached || !para.T.gameObject.activeSelf) return;
+            if (_canopyOpen >= 1f || !_parts.TryGetValue("para", out var para) || !para.T.gameObject.activeSelf) return;
             float e = _canopyOpen * _canopyOpen * (3f - 2f * _canopyOpen);
             float sx = Mathf.Lerp(0.08f, 1f, e), sy = Mathf.Lerp(0.3f, 1f, Mathf.Sqrt(e));
             var s = para.T.localScale;
@@ -183,34 +194,54 @@ namespace StickmanJumper.Presentation
 
         // ------------------------------------------------------------------ canopy torn off
 
-        /// <summary>Купол отрывается и дальше летит сам: медленно падает, сносится и тает.</summary>
+        /// <summary>
+        /// Купол отделяется и дальше летит сам: медленно падает, сносится и тает (оторвал тапом, разбился или сел на
+        /// промежуточную платформу). Стикмену тут же собирается новый — к следующему прыжку.
+        /// </summary>
         public void DetachCanopy(Transform world, Vector2 velocity)
         {
-            if (!_parts.TryGetValue("para", out var para) || para.Detached || !para.T.gameObject.activeInHierarchy) return;
-            foreach (var p in _list) if (p.Canopy) p.Detached = true;
-            _looseCanopy = para.T;
-            _looseCanopy.SetParent(world, true);
-            _looseRenderers = _looseCanopy.GetComponentsInChildren<SpriteRenderer>();
-            _looseVelocity = new Vector2(velocity.x * 0.4f, Mathf.Max(velocity.y * 0.2f, 3f)); // pulled up and away from him
-            _looseSpin = Mathf.Sign(velocity.x == 0f ? 1f : velocity.x) * -12f;
-            _looseAge = 0f;
+            if (!_parts.TryGetValue("para", out var para) || !para.T.gameObject.activeInHierarchy) return;
+            para.T.SetParent(world, true);
+            _loose.Add(new LooseCanopy
+            {
+                T = para.T,
+                Renderers = para.T.GetComponentsInChildren<SpriteRenderer>(),
+                Velocity = new Vector2(velocity.x * 0.4f, Mathf.Max(velocity.y * 0.2f, 3f)), // pulled up and away from him
+                Spin = Mathf.Sign(velocity.x == 0f ? 1f : velocity.x) * -12f,
+            });
+            // Rebuild the canopy bones for the next jump (the old ones fly away).
+            _list.RemoveAll(p => p.Canopy);
+            foreach (var key in new List<string>(_parts.Keys))
+                if (_parts[key].Canopy) _parts.Remove(key);
+            foreach (var clip in _clips)
+                for (int i = 0; i < clip.Bones.Length; i++)
+                    if (CharacterClip.IsCanopyBone(clip.Bones[i].Name)) Ensure(clip, i, _material);
+            _clip = null; // the next Play maps the new bones and their drawing order
         }
 
         public void UpdateDetached(float dt)
         {
-            if (_looseCanopy == null || !_looseCanopy.gameObject.activeSelf) return;
-            _looseAge += dt;
-            _looseVelocity = Vector2.MoveTowards(_looseVelocity, new Vector2(_looseVelocity.x * 0.98f, -1.4f), dt * 3f);
-            _looseCanopy.position += (Vector3)(_looseVelocity * dt);
-            _looseCanopy.Rotate(0f, 0f, _looseSpin * dt);
-            float alpha = 1f - Mathf.Clamp01((_looseAge - 1.2f) / 1.6f);
-            foreach (var r in _looseRenderers)
+            for (int i = _loose.Count - 1; i >= 0; i--)
             {
-                var c = r.color;
-                c.a = alpha;
-                r.color = c;
+                var c = _loose[i];
+                if (c.T == null) { _loose.RemoveAt(i); continue; }
+                c.Age += dt;
+                c.Velocity = Vector2.MoveTowards(c.Velocity, new Vector2(c.Velocity.x * 0.98f, -1.4f), dt * 3f);
+                c.T.position += (Vector3)(c.Velocity * dt);
+                c.T.Rotate(0f, 0f, c.Spin * dt);
+                float alpha = 1f - Mathf.Clamp01((c.Age - 1.2f) / 1.6f);
+                foreach (var r in c.Renderers)
+                {
+                    var col = r.color;
+                    col.a = alpha;
+                    r.color = col;
+                }
+                if (alpha <= 0f)
+                {
+                    UnityEngine.Object.Destroy(c.T.gameObject);
+                    _loose.RemoveAt(i);
+                }
             }
-            if (alpha <= 0f) _looseCanopy.gameObject.SetActive(false);
         }
 
         // ------------------------------------------------------------------ ragdoll

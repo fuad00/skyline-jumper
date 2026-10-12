@@ -19,6 +19,13 @@ namespace StickmanJumper.EditorTools
             Make("White", 4, 4, 4f, new Vector2(0.5f, 0.5f), Vector4.zero, true, (x, y) => Color.white);
             Make("Circle", 128, 128, 128f, new Vector2(0.5f, 0.5f), Vector4.zero, false,
                 (x, y) => White(Circle(x, y, 64, 64, 62)));
+            // Soft round light (night: a halo behind the stickman so he shows against the dark).
+            Make("Glow", 128, 128, 128f, new Vector2(0.5f, 0.5f), Vector4.zero, true, (x, y) =>
+            {
+                float d = Mathf.Clamp01(Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(64f, 64f)) / 63f);
+                float a = 1f - d * d * (3f - 2f * d);
+                return new Color(1f, 1f, 1f, a * a);
+            });
             // 32 px wide capsule, 16 px caps kept by 9-slice; PPU 320 → 0.1 m thick, caps 0.05 m.
             Make("Limb", 32, 64, 320f, new Vector2(0.5f, 1f), new Vector4(0, 16, 0, 16), true,
                 (x, y) => White(Capsule(x, y, 16, 16, 16, 48, 15.5f)));

@@ -54,6 +54,7 @@ namespace StickmanJumper.UI
         static readonly Color MapBuilding = new Color(0.07f, 0.09f, 0.12f, 0.55f);
         static readonly Color MapTarget = new Color(0.86f, 0.1f, 0.1f, 1f);
         static readonly Color MapLast = new Color(0.12f, 0.62f, 0.22f, 1f);
+        static readonly Color MapPlatform = new Color(1f, 0.55f, 0.1f, 1f);
 
         readonly ArtBank _art;
         readonly VisualElement _root, _hud, _menu, _menuBar, _settingsBar, _stageScreen, _levelScreen, _summary, _pauseOverlay;
@@ -632,6 +633,11 @@ namespace StickmanJumper.UI
                 p.Fill();
             }
             Dot(p, Map(new Vector2(_mapLayout.ArrowX, _mapLayout.TargetRect.yMax + 1.5f)), 7f, MapTarget);
+            for (int i = 1; i < _mapLayout.Runways.Count; i++) // intermediate platforms
+            {
+                var strip = _mapLayout.Runways[i].Strip;
+                Dot(p, Map(new Vector2(strip.center.x, strip.yMin + 1.5f)), 5f, MapPlatform);
+            }
             if (!float.IsNaN(_mapLastX)) Dot(p, Map(new Vector2(_mapLastX, _mapLayout.RoofY + 1f)), 6f, MapLast);
             Dot(p, Map(_mapPlayer + Vector2.up), 9f, Color.white);
             Dot(p, Map(_mapPlayer + Vector2.up), 6f, MapTarget);

@@ -50,6 +50,18 @@ namespace StickmanJumper.Presentation
         readonly List<ParallaxLayer> _parallax = new List<ParallaxLayer>();
         readonly List<Cloud> _clouds = new List<Cloud>();
         SpriteRenderer _paper, _guide, _lastFlag;
+        /// <summary>Флажки промежуточных платформ (по номеру полосы; 0 — старт, без флажка).</summary>
+        readonly Dictionary<int, SpriteRenderer> _platformFlags = new Dictionary<int, SpriteRenderer>();
+
+        // Night (the original's «night only»): black sky; LightSprite pictures light up near the stickman and the lamps.
+        readonly bool _night;
+        readonly List<(SpriteRenderer r, Vector2 c, float a)> _litPictures = new List<(SpriteRenderer, Vector2, float)>();
+        LevelScene.LightSource[] _lights = new LevelScene.LightSource[0];
+        Vector2 _playerLight;
+        const float PlayerLightFull = 10f, PlayerLightFade = 26f, NightFloor = 0.12f;
+        static readonly Color NightInk = new Color(0.92f, 0.92f, 0.95f, 1f);
+        /// <summary>Уровень ночной: небо чёрное, освещено только рядом со стикменом и фонарями.</summary>
+        public bool Night => _night;
         Transform _paperLayer;
         float _flagTopY;
 
@@ -59,12 +71,17 @@ namespace StickmanJumper.Presentation
         {
             _art = art;
             _layout = layout;
+            _night = level.Scene != null && level.Scene.Night;
+            if (_night) _lights = level.Scene.Lights ?? new LevelScene.LightSource[0];
             _kit = new SpriteKit(art.SpriteMaterial, art.White);
             _root = new GameObject("Level").transform;
             _root.SetParent(parent, false);
 
-            BuildPaper();
-            BuildSkyline();
+            if (!_night)
+            {
+                BuildPaper();
+                BuildSkyline();
+            }
             BuildStreet();
             if (level.Scene != null)
             {
@@ -79,9 +96,10 @@ namespace StickmanJumper.Presentation
                     for (int i = 0; i < level.Others.Length; i++) BuildBuilding($"Building {i + 1}", level.Others[i]);
                 BuildDecor(level);
             }
-            BuildFog();
+            if (!_night) BuildFog();
             BuildRuler();
             BuildTarget();
+            BuildPlatformFlags();
             BuildLastFlag();
             BuildColliders();
         }
@@ -108,7 +126,8 @@ namespace StickmanJumper.Presentation
             float viewH = cam.orthographicSize * 2f;
             float viewW = viewH * Mathf.Max(cam.aspect, 2.4f);
 
-            UpdatePaper(c, viewH * cam.aspect, viewH);
+            if (_night) UpdateNightLight();
+            else UpdatePaper(c, viewH * cam.aspect, viewH);
             foreach (var p in _parallax)
             {
                 Vector2 pos = p.Base + Vector2.Scale(c, p.Factor);
@@ -236,9 +255,9 @@ namespace StickmanJumper.Presentation
             var street = new GameObject("Street").transform;
             street.SetParent(_root, false);
             float x0 = _layout.Overview.xMin - 150f, x1 = _layout.Overview.xMax + 150f;
-            _kit.Box("Curb", street, Rect.MinMaxRect(x0, -0.4f, x1, 0f), Curb, SortOrder.Street + 1);
-            _kit.Box("Asphalt", street, Rect.MinMaxRect(x0, -1.2f, x1, -0.4f), Asphalt, SortOrder.Street);
-            _kit.Box("Underground", street, Rect.MinMaxRect(x0, -60f, x1, -1.2f), AsphaltDeep, SortOrder.Fog + 1);
+            _kit.Box("Curb", street, Rect.MinMaxRect(x0, -0.4f, x1, 0f), _night ? new Color(0.22f, 0.22f, 0.24f) : Curb, SortOrder.Street + 1);
+            _kit.Box("Asphalt", street, Rect.MinMaxRect(x0, -1.2f, x1, -0.4f), _night ? new Color(0.12f, 0.12f, 0.13f) : Asphalt, SortOrder.Street);
+            _kit.Box("Underground", street, Rect.MinMaxRect(x0, -60f, x1, -1.2f), _night ? Color.black : AsphaltDeep, SortOrder.Fog + 1);
         }
 
         /// <summary>
@@ -258,6 +277,7 @@ namespace StickmanJumper.Presentation
                 r.transform.localPosition = new Vector3(p.Position.x, p.Position.y, -i * 0.0005f);
                 r.transform.localRotation = Quaternion.Euler(0f, 0f, p.Rotation);
                 r.transform.localScale = new Vector3(p.Scale.x, p.Scale.y, 1f);
+                if (_night && p.Kind == "LightSprite" && !p.AlwaysLit) _litPictures.Add((r, p.Position, p.Alpha));
             }
         }
 
@@ -347,19 +367,24 @@ namespace StickmanJumper.Presentation
         {
             var ruler = new GameObject("MeterMarkers").transform;
             ruler.SetParent(_root, false);
-            float edge = _layout.EdgeX, back = _layout.BackLimitX, roof = _layout.RoofY;
-            for (int m = MarkerStep; edge - m >= back - 0.01f; m += MarkerStep)
+            // On every runway: the start roof and each intermediate platform (counted from its own edge, in its direction).
+            foreach (var runway in _layout.Runways)
             {
-                float x = edge - m;
-                float arrowTop = roof + 1.35f;
-                if (_art.MarkerArrow != null)
+                float edge = runway.EdgeX, back = runway.BackLimitX, roof = runway.RoofY;
+                int dir = runway.Dir;
+                for (int m = MarkerStep; dir * (edge - dir * m - back) >= -0.01f; m += MarkerStep)
                 {
-                    var a = _kit.Make("Arrow", ruler, _art.MarkerArrow, SortOrder.Ruler, MarkerInk);
-                    float s = 0.75f / Mathf.Max(0.01f, _art.MarkerArrow.bounds.size.x);
-                    a.transform.localScale = new Vector3(s, s, 1f);
-                    SpriteKit.PlaceBottomCenter(a, x, arrowTop - _art.MarkerArrow.bounds.size.y * s);
+                    float x = edge - dir * m;
+                    float arrowTop = roof + 1.35f;
+                    if (_art.MarkerArrow != null)
+                    {
+                        var a = _kit.Make("Arrow", ruler, _art.MarkerArrow, SortOrder.Ruler, _night ? NightInk : MarkerInk);
+                        float s = 0.75f / Mathf.Max(0.01f, _art.MarkerArrow.bounds.size.x);
+                        a.transform.localScale = new Vector3(s, s, 1f);
+                        SpriteKit.PlaceBottomCenter(a, x, arrowTop - _art.MarkerArrow.bounds.size.y * s);
+                    }
+                    Number(ruler, m, x, arrowTop + 0.12f, 0.85f);
                 }
-                Number(ruler, m, x, arrowTop + 0.12f, 0.85f);
             }
         }
 
@@ -380,7 +405,7 @@ namespace StickmanJumper.Presentation
             float x = centerX - (width - gap) * 0.5f;
             foreach (var d in sprites)
             {
-                var r = _kit.Make("Digit", parent, d, SortOrder.Ruler + 1, MarkerInk);
+                var r = _kit.Make("Digit", parent, d, SortOrder.Ruler + 1, _night ? NightInk : MarkerInk);
                 float s = h / d.bounds.size.y;
                 r.transform.localScale = new Vector3(s, s, 1f);
                 float w = d.bounds.size.x * s;
@@ -415,6 +440,67 @@ namespace StickmanJumper.Presentation
                 _guide.size = new Vector2(_art.Dash.bounds.size.x, 10f);
                 _guide.enabled = false;
             }
+        }
+
+        /// <summary>Флажок на каждой промежуточной платформе: красный, пока не сел на неё, потом зелёный (как в оригинале).</summary>
+        void BuildPlatformFlags()
+        {
+            for (int i = 1; i < _layout.Runways.Count; i++)
+            {
+                var strip = _layout.Runways[i].Strip;
+                SpriteRenderer f;
+                if (_art.Flag != null)
+                {
+                    f = _kit.Make($"PlatformFlag {i}", _root, _art.Flag, SortOrder.Target);
+                    float s = FlagHeight * 0.8f / Mathf.Max(0.01f, _art.Flag.bounds.size.y);
+                    f.transform.localScale = new Vector3(s, s, 1f);
+                }
+                else f = _kit.Box($"PlatformFlag {i}", _root, new Rect(-0.05f, 0f, 0.1f, FlagHeight * 0.8f), TargetRed, SortOrder.Target);
+                f.transform.localPosition = new Vector3(strip.center.x, strip.yMin, 0f);
+                _platformFlags[i] = f;
+            }
+        }
+
+        /// <summary>Сел на промежуточную платформу — её флажок зеленеет.</summary>
+        public void SetPlatformReached(int runway, bool reached)
+        {
+            if (!_platformFlags.TryGetValue(runway, out var f)) return;
+            if (_art.Flag != null && _art.FlagGreen != null)
+            {
+                f.sprite = reached ? _art.FlagGreen : _art.Flag;
+                f.color = Color.white;
+            }
+            else f.color = reached ? new Color(0.2f, 0.75f, 0.25f) : (_art.Flag != null ? Color.white : TargetRed);
+        }
+
+        /// <summary>Новая попытка: все флажки платформ снова красные.</summary>
+        public void ResetPlatformFlags()
+        {
+            foreach (var key in _platformFlags.Keys) SetPlatformReached(key, false);
+        }
+
+        /// <summary>Ночью — где сейчас стикмен (он сам светит, как фонарь).</summary>
+        public void SetPlayerLight(Vector2 position) => _playerLight = position;
+
+        /// <summary>
+        /// Ночное освещение как в оригинале: каждая «светящаяся» картинка ярче, чем ближе к стикмену или фонарю
+        /// (по своему центру — поэтому дома светлеют кусками), вдали почти чёрная.
+        /// </summary>
+        void UpdateNightLight()
+        {
+            foreach (var (r, c, a) in _litPictures)
+            {
+                float b = Lit(Vector2.Distance(c, _playerLight), PlayerLightFull, PlayerLightFade);
+                foreach (var l in _lights) b = Mathf.Max(b, Lit(Vector2.Distance(c, l.Position), l.RadiusFull, l.RadiusFade));
+                r.color = new Color(b, b, b * 1.04f, a);
+            }
+        }
+
+        static float Lit(float distance, float full, float fade)
+        {
+            if (distance <= full) return 1f;
+            float t = Mathf.Clamp01((distance - full) / Mathf.Max(0.01f, fade - full));
+            return Mathf.Lerp(1f, NightFloor, t * t * (3f - 2f * t));
         }
 
         void BuildLastFlag()

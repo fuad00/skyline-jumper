@@ -9,6 +9,8 @@ namespace StickmanJumper.Gameplay
     /// Один прыжок от начала до итога. Чистая логика без сцены: игра вызывает Tap() и Advance(dt), а картинка, звук
     /// и камера только читают состояние и слушают события. Физика идёт фиксированными шагами — одинаковые тапы дают
     /// одинаковый прыжок (это пригодится для видеоповтора).
+    /// Как в оригинале, на уровне бывают промежуточные платформы: сел на такую — стоишь на ней, и всё заново
+    /// (отойти, разбежаться, прыгнуть), причём бежать там может быть и влево. Время — общее на весь уровень.
     /// </summary>
     public sealed class JumpSession
     {
@@ -67,6 +69,17 @@ namespace StickmanJumper.Gameplay
         /// <summary>Расстояние от точки посадки до флажка, м (NaN, пока не сел).</summary>
         public float LandingDistance { get; private set; }
         public bool LandedOnTarget { get; private set; }
+
+        /// <summary>Полоса, с которой сейчас разбег (0 — старт, дальше — промежуточные платформы).</summary>
+        public int RunwayIndex { get; private set; }
+        public Runway Runway => _level.Runways[RunwayIndex];
+        /// <summary>Куда бежим и прыгаем с этой полосы: +1 вправо, −1 влево.</summary>
+        public int Dir => Runway.Dir;
+        /// <summary>Сколько осталось до края полосы (по направлению бега), м.</summary>
+        public float DistanceToEdge => Dir * (Runway.EdgeX - Feet.x);
+        /// <summary>На какие промежуточные платформы уже садился в этой попытке.</summary>
+        public bool Reached(int runway) => _reached != null && runway >= 0 && runway < _reached.Length && _reached[runway];
+        bool[] _reached;
         public float TimeLeft => Mathf.Max(0f, _level.TimeLimit - Elapsed);
 
         /// <summary>Коробка тела для столкновений.</summary>
@@ -89,6 +102,8 @@ namespace StickmanJumper.Gameplay
             TakeoffX = float.NaN;
             Phase = JumpPhase.Ready;
             Outcome = JumpOutcome.None;
+            RunwayIndex = 0;
+            _reached = new bool[_level.Runways.Count];
             Feet = new Vector2(_level.StartFeetX, _level.RoofY);
             Velocity = Vector2.zero;
             ImpactVelocity = Vector2.zero;
@@ -115,15 +130,15 @@ namespace StickmanJumper.Gameplay
                     break;
                 case JumpPhase.BackingUp:
                 case JumpPhase.AtBackWall:
-                    RunUpLength = _level.EdgeX - Feet.x;
-                    RunStartX = Feet.x;
+                    RunUpLength = DistanceToEdge;
+                    if (RunwayIndex == 0) RunStartX = Feet.x; // the «Last» flag marks the start roof only
                     Velocity = Vector2.zero;
                     Phase = JumpPhase.Running;
                     Raise(JumpEvent.StartedRunning);
                     break;
                 case JumpPhase.Running:
                     // A short run-up still jumps (quick taps must work): below the gate the push-off uses the gate speed.
-                    Velocity = new Vector2(Mathf.Max(Velocity.x, _jump.JumpSpeedGate) * _jump.JumpHorizontalMultiplier, _jump.JumpUpSpeed);
+                    Velocity = new Vector2(Dir * Mathf.Max(Mathf.Abs(Velocity.x), _jump.JumpSpeedGate) * _jump.JumpHorizontalMultiplier, _jump.JumpUpSpeed);
                     TakeoffX = Feet.x;
                     Phase = JumpPhase.Airborne;
                     Raise(JumpEvent.Jumped);
@@ -148,7 +163,8 @@ namespace StickmanJumper.Gameplay
         }
 
         /// <summary>Прогнать время вперёд (обычно Time.deltaTime). Внутри — фиксированные шаги.</summary>
-        public void Advance(float dt)
+        /// <param name="beforeStep">Вызывается перед каждым шагом (автопилот тапает ровно так же, как при расчёте плана).</param>
+        public void Advance(float dt, Action<JumpSession> beforeStep = null)
         {
             if (Phase.IsFinished()) return;
             _accumulator += Mathf.Max(0f, dt);
@@ -156,6 +172,7 @@ namespace StickmanJumper.Gameplay
             while (_accumulator >= _step && steps++ < MaxStepsPerAdvance)
             {
                 _accumulator -= _step;
+                beforeStep?.Invoke(this);
                 Step(_step);
                 if (Phase.IsFinished())
                 {
@@ -202,11 +219,11 @@ namespace StickmanJumper.Gameplay
 
         void StepBackingUp(float h)
         {
-            float x = Feet.x - _jump.WalkBackSpeed * h;
-            Velocity = new Vector2(-_jump.WalkBackSpeed, 0f);
-            if (x <= _level.BackLimitX)
+            float x = Feet.x - Dir * _jump.WalkBackSpeed * h;
+            Velocity = new Vector2(-Dir * _jump.WalkBackSpeed, 0f);
+            if (Dir * (x - Runway.BackLimitX) <= 0f)
             {
-                x = _level.BackLimitX;
+                x = Runway.BackLimitX;
                 Velocity = Vector2.zero;
                 Phase = JumpPhase.AtBackWall;
                 Raise(JumpEvent.ReachedBackWall);
@@ -216,10 +233,10 @@ namespace StickmanJumper.Gameplay
 
         void StepRunning(float h)
         {
-            float v = Mathf.Min(Velocity.x + _jump.RunAcceleration * h, _jump.RunMaxSpeed);
-            Velocity = new Vector2(v, 0f);
-            Feet = new Vector2(Feet.x + v * h, Feet.y);
-            if (Feet.x > _level.EdgeX + _jump.EdgeOverrun)
+            float v = Mathf.Min(Mathf.Abs(Velocity.x) + _jump.RunAcceleration * h, _jump.RunMaxSpeed);
+            Velocity = new Vector2(Dir * v, 0f);
+            Feet = new Vector2(Feet.x + Dir * v * h, Feet.y);
+            if (-DistanceToEdge > _jump.EdgeOverrun)
             {
                 // Missed the edge: loses footing and plummets (ragdoll from here on).
                 ImpactVelocity = Velocity;
@@ -251,6 +268,9 @@ namespace StickmanJumper.Gameplay
             var contact = CanopyCut ? ContactResult.Crash : LandingJudge.Judge(hit.Normal, Velocity, _flight, CanopyDeployed);
             switch (contact)
             {
+                case ContactResult.Landed when _level.Solids[hit.Index].Runway > 0:
+                    ReachPlatform(_level.Solids[hit.Index].Runway);
+                    break;
                 case ContactResult.Landed:
                     ImpactVelocity = Velocity;
                     Velocity = Vector2.zero;
@@ -277,6 +297,24 @@ namespace StickmanJumper.Gameplay
                         Feet += Sweep.Cast(BodyBox, rest, _level.Solids, out var next) ? rest * next.T : rest;
                     break;
             }
+        }
+
+        /// <summary>Сел на промежуточную платформу: стоит на ней, купол сброшен, дальше разбег отсюда.</summary>
+        void ReachPlatform(int runway)
+        {
+            ImpactVelocity = Velocity;
+            Velocity = Vector2.zero;
+            RunwayIndex = runway;
+            _reached[runway] = true;
+            var r = Runway;
+            Feet = new Vector2(Mathf.Clamp(Feet.x, r.Strip.xMin + 0.3f, r.Strip.xMax - 0.3f), r.RoofY);
+            CanopyDeployed = false;
+            CanopyCut = false;
+            CanopyProgress = 0f;
+            _canopyTime = 0f;
+            TakeoffX = float.NaN;
+            Phase = JumpPhase.Ready;
+            Raise(JumpEvent.ReachedPlatform);
         }
 
         void Raise(JumpEvent e) => Happened?.Invoke(e);

@@ -64,6 +64,12 @@ namespace StickmanJumper.Config
         [Tooltip("Своя предельная скорость падения без купола, м/с (0 — общая из FlightConfig). В оригинале так ускоряли падение на самых высоких уровнях.")]
         public float MaxFallSpeed;
 
+        [Header("Заставка в меню (считается автоматически: Stickman Jumper → Recompute Menu Demo Plans)")]
+        [Tooltip("Разбег, с которым автопилот садится точно на флажок. NaN — уровень в заставку не берём.")]
+        public float DemoRunUp = float.NaN;
+        [Tooltip("На какой высоте автопилот раскрывает купол, м.")]
+        public float DemoOpenY = float.NaN;
+
         [Header("Звёзды")]
         [Tooltip("2 звезды: сел не дальше этого от флажка, м.")]
         public float TwoStarDistance = 2f;

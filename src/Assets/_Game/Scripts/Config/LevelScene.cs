@@ -23,8 +23,20 @@ namespace StickmanJumper.Config
             [Tooltip("Слой из редактора оригинала: больше — ближе.")]
             public int Layer;
             [Range(0f, 1f)] public float Alpha;
-            [Tooltip("Особая роль: Bird, Helicopter, Glass или пусто.")]
+            [Tooltip("Особая роль: LightSprite (ночью светлеет рядом со светом), Bird, Helicopter, Glass или пусто.")]
             public string Kind;
+            [Tooltip("Ночью всегда освещена (облака оригинала).")]
+            public bool AlwaysLit;
+        }
+
+        [Serializable]
+        public struct LightSource
+        {
+            public Vector2 Position;
+            [Tooltip("До этого расстояния освещено полностью, м.")]
+            public float RadiusFull;
+            [Tooltip("Дальше этого — темно, м.")]
+            public float RadiusFade;
         }
 
         public Picture[] Pictures = new Picture[0];
@@ -34,8 +46,12 @@ namespace StickmanJumper.Config
         public Rect Runway;
         [Tooltip("Платформа-цель (флажок — в её середине).")]
         public Rect Platform;
-        [Tooltip("Промежуточные платформы (в оригинале на них садятся и прыгают дальше; у нас пока просто крыши).")]
+        [Tooltip("Промежуточные платформы: сел — следующий разбег отсюда (полоса, как у разбега).")]
         public Rect[] InterPlatforms = new Rect[0];
+        [Tooltip("С промежуточной платформы бежать влево (иначе вправо).")]
+        public bool[] InterLeft = new bool[0];
+        [Tooltip("Источники света ночью (кроме самого стикмена).")]
+        public LightSource[] Lights = new LightSource[0];
         [Tooltip("Размер уровня, м.")]
         public Vector2 Size;
         public bool Mirrored;

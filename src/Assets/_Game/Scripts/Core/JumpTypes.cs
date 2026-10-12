@@ -39,6 +39,8 @@ namespace StickmanJumper.Core
         /// <summary>Скользнул по стене, не разбившись.</summary>
         Grazed,
         Landed,
+        /// <summary>Сел на промежуточную платформу: дальше новый разбег уже с неё.</summary>
+        ReachedPlatform,
         Crashed,
         TimeUp
     }

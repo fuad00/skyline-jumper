@@ -34,6 +34,8 @@ namespace StickmanJumper.Config
         public Sprite Paper;
         [Tooltip("Белая дымка у земли (сверху прозрачная).")]
         public Sprite FogBand;
+        [Tooltip("Мягкий круглый свет (ночью — ореол за стикменом).")]
+        public Sprite Glow;
         [Tooltip("Одна чёрточка пунктира от флажка цели вверх (повторяется плиткой).")]
         public Sprite Dash;
         public Sprite Star;
@@ -78,6 +80,8 @@ namespace StickmanJumper.Config
         public Sprite Flag;
         [Tooltip("Зелёный флажок: откуда стартовал прошлый разбег.")]
         public Sprite FlagLast;
+        [Tooltip("Зелёный флажок: на эту промежуточную платформу уже сел.")]
+        public Sprite FlagGreen;
         [Tooltip("Цифры 0–9 для меток метров над крышей.")]
         public Sprite[] Digits = new Sprite[0];
         [Tooltip("Стрелка вниз под цифрой метки.")]

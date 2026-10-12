@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using StickmanJumper.Audio;
 using StickmanJumper.Config;
@@ -38,6 +39,15 @@ namespace StickmanJumper
         [SerializeField] Camera _camera;
 
         SaveService _save;
+        Color _dayBackground;
+
+        // Menu demo: behind the menus the game plays itself on random levels and always lands on the flag.
+        readonly List<(int stage, int level)> _demoLevels = new List<(int, int)>();
+        readonly System.Random _demoRng = new System.Random();
+        bool _demo;
+        float _demoEndAt = -1f;
+        int _menuStage;
+        Action<JumpSession> _pilotStep;
         CameraRig2D _cameraRig;
         AudioService _audio;
         GameUI _ui;
@@ -73,6 +83,11 @@ namespace StickmanJumper
         /// <summary>Последний итог (для автотеста).</summary>
         public JumpScore LastScore { get; private set; }
 
+        /// <summary>Сколько уровней годятся для заставки в меню (автопилот на них точно садится на флажок).</summary>
+        public int DemoLevelCount => _demoLevels.Count;
+        /// <summary>Сейчас за меню играет заставка.</summary>
+        public bool DemoRunning => _demo;
+
         void Awake()
         {
             Application.targetFrameRate = 60; // Android defaults to 30
@@ -84,6 +99,7 @@ namespace StickmanJumper
             _save.Load();
             UIText.Lang = UIText.FromCode(_save.Data.Language); // static: survives Play mode without a domain reload
             _cameraRig = new CameraRig2D(_camera, _cameraConfig);
+            _dayBackground = _camera.backgroundColor;
             _audio = new AudioService(_camera.gameObject, _sounds);
             _audio.SetSound(_save.Data.Sound);
             _audio.SetMusic(_save.Data.Music);
@@ -108,6 +124,14 @@ namespace StickmanJumper
             _ui.PauseClicked += () => { _audio.Click(); SetPaused(true); };
             _ui.ZoomClicked += () => { _audio.Click(); _cameraRig.Overview = !_cameraRig.Overview; };
             RefreshSoundButtons();
+
+            _pilotStep = s => Autopilot?.Update(s);
+            for (int s = 0; s < _catalog.Stages.Length; s++)
+                for (int l = 0; _catalog.Stages[s] != null && l < _catalog.Stages[s].Levels.Length; l++)
+                {
+                    var level = _catalog.Level(s, l);
+                    if (level != null && !float.IsNaN(level.DemoRunUp) && !float.IsNaN(level.DemoOpenY)) _demoLevels.Add((s, l));
+                }
 
             LoadLevel(0, 0);
             ShowMainMenu();
@@ -180,15 +204,15 @@ namespace StickmanJumper
             EnterMenu();
             var cards = new List<StageCardView>();
             for (int s = 0; s < _catalog.Stages.Length; s++) cards.Add(StageCard(s));
-            _ui.SetStages(cards, Mathf.Max(0, _stage)); // back from a stage's levels: that stage stays in the centre
+            _ui.SetStages(cards, _menuStage); // back from a stage's levels: that stage stays in the centre
             _ui.Show(UIScreen.StageSelect);
         }
 
         public void ShowLevelSelect(int stage)
         {
             stage = Mathf.Clamp(stage, 0, _catalog.Stages.Length - 1);
-            EnterMenu();
-            if (stage != _stage) LoadLevel(stage, 0);
+            _menuStage = stage;
+            EnterMenu(); // the demo keeps playing behind the level list
             var ids = _catalog.LevelIds(stage);
             var nodes = new List<LevelNodeView>();
             for (int i = 0; i < ids.Count; i++)
@@ -204,7 +228,12 @@ namespace StickmanJumper
         public void StartLevel(int stage, int level)
         {
             if (_catalog.Level(stage, level) == null) return;
-            if (stage != _stage || level != _levelIndex) LoadLevel(stage, level);
+            // Leave the demo: a fresh session (no «Last» flag from the demo's run), sounds back on.
+            _demo = false;
+            Autopilot = null;
+            _audio.Quiet = false;
+            _menuStage = stage;
+            LoadLevel(stage, level);
             _playing = true;
             _ui.Show(UIScreen.Game);
             StartRun();
@@ -240,8 +269,35 @@ namespace StickmanJumper
             _ui.HideDialog();
             _playing = false;
             SetPaused(false);
-            Autopilot = null;
-            if (_session != null && _session.Phase != JumpPhase.Ready) StartRun(); // stickman back on the roof
+            if (!_demo) StartDemo();
+        }
+
+        /// <summary>Заставка в меню: случайный уровень (не тот же, что только что), автопилот с заранее посчитанным планом.</summary>
+        void StartDemo()
+        {
+            if (_demoLevels.Count == 0)
+            {
+                // Nothing the autopilot can land: the stickman just stands on the roof, like before.
+                Autopilot = null;
+                if (_session != null && _session.Phase != JumpPhase.Ready) StartRun();
+                return;
+            }
+            var pick = _demoLevels[_demoRng.Next(_demoLevels.Count)];
+            if (_demoLevels.Count > 1 && pick.stage == _stage && pick.level == _levelIndex) pick = _demoLevels[(_demoLevels.IndexOf(pick) + 1) % _demoLevels.Count];
+            _demo = true;
+            _demoEndAt = -1f;
+            _audio.Quiet = true;
+            LoadLevel(pick.stage, pick.level);
+            var level = _catalog.Level(pick.stage, pick.level);
+            Autopilot = new Autopilot { DesiredRunUp = level.DemoRunUp, OpenAtY = level.DemoOpenY };
+        }
+
+        /// <summary>Заставка доиграла (сел) — небольшая пауза полюбоваться, потом следующий случайный уровень.</summary>
+        void UpdateDemo()
+        {
+            if (!_demo || !_session.Phase.IsFinished()) return;
+            if (_demoEndAt < 0f) _demoEndAt = Time.unscaledTime;
+            else if (Time.unscaledTime - _demoEndAt > 2.5f) StartDemo();
         }
 
         void RefreshSoundButtons() => _ui.SetSound(_save.Data.Sound, _save.Data.Music);
@@ -261,6 +317,7 @@ namespace StickmanJumper
             _session = new JumpSession(_layout, _jumpConfig, _flightConfig);
             _session.Happened += OnJumpEvent;
             _levelView = new LevelView(_world, _level, _layout, _art);
+            _camera.backgroundColor = _levelView.Night ? Color.black : _dayBackground; // night: no paper, black sky
             StartRun();
         }
 
@@ -276,11 +333,13 @@ namespace StickmanJumper
             _stickman?.Destroy();
             _session.Reset();
             _levelView.SetLastRunFlag(_session.LastRunStartX);
+            _levelView.ResetPlatformFlags();
             _stickman = new StickmanView(_world, _stickmanConfig, _art);
+            _stickman.SetNight(_levelView.Night);
             _stickman.RagdollImpact += OnRagdollImpact;
             _audio.ResetRun();
             _cameraRig.Overview = false;
-            if (_playing) _cameraRig.Snap(CameraRig2D.OverviewCenter(_layout.Overview), _cameraRig.FitSize(_layout.Overview));
+            if (_playing || _demo) _cameraRig.Snap(CameraRig2D.OverviewCenter(_layout.Overview), _cameraRig.FitSize(_layout.Overview));
             else _cameraRig.Snap(MenuCenter, _cameraConfig.SizeOnRoof);
             LastScore = default;
             if (_playing) _ui.Show(UIScreen.Game);
@@ -329,19 +388,21 @@ namespace StickmanJumper
 
             if (_playing)
             {
-                if (Autopilot != null) Autopilot.Update(_session);
                 if (_tapQueued && !_ui.SummaryVisible) _session.Tap();
             }
             _tapQueued = false;
-            _session.Advance(dt);
+            _session.Advance(dt, Autopilot != null && (_playing || _demo) ? _pilotStep : null); // the pilot acts on every physics step
 
             if (!_stickman.IsRagdoll) _stickman.UpdateAlive(_session, dt);
             _stickman.UpdateDetached(dt); // a canopy that was torn or cut away keeps flying
 
             Vector2 focus = _stickman.IsRagdoll ? _stickman.Center : _session.Feet;
-            if (_playing) _cameraRig.Update(focus, _session.Velocity, _session.Phase, _stickman.IsRagdoll, _layout.Overview, realDt);
+            // Standing on an intermediate platform is not the level start: no overview there, keep following him.
+            var cameraPhase = _session.Phase == JumpPhase.Ready && _session.RunwayIndex > 0 ? JumpPhase.AtBackWall : _session.Phase;
+            if (_playing || _demo) _cameraRig.Update(focus, _session.Velocity, cameraPhase, _stickman.IsRagdoll, _layout.Overview, realDt);
             else _cameraRig.UpdateFixed(MenuCenter, _cameraConfig.SizeOnRoof, realDt);
-            _levelView.SetGuideVisible(_playing && _session.Phase == JumpPhase.Airborne);
+            _levelView.SetPlayerLight(focus + Vector2.up);
+            _levelView.SetGuideVisible((_playing || _demo) && _session.Phase == JumpPhase.Airborne);
             _levelView.Update(_camera, Time.time, dt);
             _audio.Update(_session, _stickman.IsRagdoll, realDt);
 
@@ -354,6 +415,7 @@ namespace StickmanJumper
 
             UpdateSlowMo();
             if (_playing) UpdateFinish();
+            UpdateDemo();
         }
 
         void ReadKeyboard()
@@ -386,6 +448,10 @@ namespace StickmanJumper
             {
                 case JumpEvent.StartedBackingUp:
                     _cameraRig.Overview = false;
+                    break;
+                case JumpEvent.ReachedPlatform:
+                    _levelView.SetPlatformReached(_session.RunwayIndex, true);
+                    _stickman.DropCanopy(_session.ImpactVelocity);
                     break;
                 case JumpEvent.CanopyCut:
                     _stickman.CutCanopy(_session.Velocity, _runIndex);

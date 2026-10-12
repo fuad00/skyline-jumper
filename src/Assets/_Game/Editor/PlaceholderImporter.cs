@@ -72,6 +72,7 @@ namespace StickmanJumper.EditorTools
             new Item(MainAtlas, "paraHolder.png", "paraHolder", "Держатель строп над головой", Bottom),
             new Item(null, "flag-hd.png", "flag", "Красный флажок цели", Bottom, false, true),
             new Item(null, "lastFlag-hd.png", "lastFlag", "Флажок «Last»: откуда стартовал прошлый разбег", Bottom, false, true),
+            new Item(null, "flagGreen-hd.png", "flagGreen", "Зелёный флажок: промежуточная платформа пройдена", Bottom, false, true),
             new Item(MainAtlas, "0.png", "digit0", "Цифра метки метров", Bottom),
             new Item(MainAtlas, "1.png", "digit1", "Цифра метки метров", Bottom),
             new Item(MainAtlas, "2.png", "digit2", "Цифра метки метров", Bottom),

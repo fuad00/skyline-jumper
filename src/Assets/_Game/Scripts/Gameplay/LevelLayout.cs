@@ -12,12 +12,44 @@ namespace StickmanJumper.Gameplay
         public readonly Rect Rect;
         public readonly SolidKind Kind;
         public readonly bool IsTarget;
+        /// <summary>Поверхность промежуточной платформы: номер её полосы разбега (−1 — обычная поверхность).</summary>
+        public readonly int Runway;
 
-        public Solid(Rect rect, SolidKind kind, bool isTarget)
+        public Solid(Rect rect, SolidKind kind, bool isTarget, int runway = -1)
         {
             Rect = rect;
             Kind = kind;
             IsTarget = isTarget;
+            Runway = runway;
+        }
+    }
+
+    /// <summary>
+    /// Полоса разбега: стартовая крыша (номер 0) или промежуточная платформа. Бежим в сторону Dir (+1 вправо, −1 влево),
+    /// прыгаем с края EdgeX, пятиться можно до BackLimitX, ступни на высоте RoofY.
+    /// </summary>
+    public readonly struct Runway
+    {
+        public readonly Rect Strip;
+        public readonly int Dir;
+        public readonly float RoofY, EdgeX, BackLimitX;
+
+        public Runway(Rect strip, int dir, float roofY, float edgeX, float backLimitX)
+        {
+            Strip = strip;
+            Dir = dir < 0 ? -1 : 1;
+            RoofY = roofY;
+            EdgeX = edgeX;
+            BackLimitX = backLimitX;
+        }
+
+        /// <summary>Полоса с прыжком в сторону dir: край — передний конец, отступ от дальнего конца — margin.</summary>
+        public static Runway Make(Rect strip, int dir, float margin)
+        {
+            margin = Mathf.Min(margin, strip.width * 0.5f);
+            return dir < 0
+                ? new Runway(strip, -1, strip.yMin, strip.xMin, strip.xMax - margin)
+                : new Runway(strip, 1, strip.yMin, strip.xMax, strip.xMin + margin);
         }
     }
 
@@ -31,8 +63,11 @@ namespace StickmanJumper.Gameplay
         public const float GroundMargin = 150f;
 
         readonly List<Solid> _solids = new List<Solid>();
+        readonly List<Runway> _runways = new List<Runway>();
 
         public IReadOnlyList<Solid> Solids => _solids;
+        /// <summary>Полосы разбега: 0 — старт, дальше — промежуточные платформы.</summary>
+        public IReadOnlyList<Runway> Runways => _runways;
         public float RoofY { get; private set; }
         public float EdgeX { get; private set; }
         public float BackLimitX { get; private set; }
@@ -74,6 +109,7 @@ namespace StickmanJumper.Gameplay
             layout.EdgeX = s.X + s.Width;
             layout.BackLimitX = s.X + Mathf.Min(jump.BackWallMargin, s.Width * 0.5f);
             layout.StartFeetX = Mathf.Max(layout.BackLimitX, layout.EdgeX - jump.StartDistanceFromEdge);
+            layout._runways.Add(new Runway(new Rect(s.X, s.Height, s.Width, 0f), 1, layout.RoofY, layout.EdgeX, layout.BackLimitX));
             layout.TargetRect = ToRect(t);
             layout.ArrowX = t.X + t.Width * Mathf.Clamp01(level.ArrowPosition);
 
@@ -98,8 +134,6 @@ namespace StickmanJumper.Gameplay
             layout._solids.Add(new Solid(new Rect(-GroundMargin, -GroundDepth, width + 2f * GroundMargin, GroundDepth), SolidKind.Ground, false));
             var rects = Merge(scene.Solids);
             foreach (var r in rects) layout._solids.Add(new Solid(r, SolidKind.Building, false));
-            if (scene.InterPlatforms != null)
-                foreach (var r in scene.InterPlatforms) layout._solids.Add(new Solid(r, SolidKind.Building, false));
             layout.TargetIndex = layout._solids.Count;
             layout._solids.Add(new Solid(scene.Platform, SolidKind.Building, true));
             layout.TargetRect = scene.Platform;
@@ -113,9 +147,28 @@ namespace StickmanJumper.Gameplay
             layout.EdgeX = right;
             layout.BackLimitX = back + Mathf.Min(jump.BackWallMargin, (right - back) * 0.5f);
             layout.StartFeetX = Mathf.Max(layout.BackLimitX, layout.EdgeX - jump.StartDistanceFromEdge);
+            layout._runways.Add(Runway.Make(run, 1, jump.BackWallMargin));
 
-            float x0 = Mathf.Min(back, scene.Platform.xMin) - 4f, x1 = Mathf.Max(right, scene.Platform.xMax) + 4f;
-            layout.Overview = Rect.MinMaxRect(x0, 0f, x1, Mathf.Max(roof, scene.Platform.yMax) + 4f);
+            // Intermediate platforms: land on one and the next run-up starts there (its own direction). Their surface is
+            // the bottom of the strip, like the start runway's; a thin solid there tells the session which one it is.
+            if (scene.InterPlatforms != null)
+                for (int i = 0; i < scene.InterPlatforms.Length; i++)
+                {
+                    var strip = scene.InterPlatforms[i];
+                    bool left = scene.InterLeft != null && i < scene.InterLeft.Length && scene.InterLeft[i];
+                    layout._runways.Add(Runway.Make(strip, left ? -1 : 1, jump.BackWallMargin));
+                    layout._solids.Add(new Solid(new Rect(strip.xMin, strip.yMin - 1f, strip.width, 1f), SolidKind.Building, false, layout._runways.Count - 1));
+                }
+
+            // The overview shows the whole route: start, every intermediate platform and the target.
+            float x0 = Mathf.Min(back, scene.Platform.xMin), x1 = Mathf.Max(right, scene.Platform.xMax), top = Mathf.Max(roof, scene.Platform.yMax);
+            foreach (var r in layout._runways)
+            {
+                x0 = Mathf.Min(x0, r.Strip.xMin);
+                x1 = Mathf.Max(x1, r.Strip.xMax);
+                top = Mathf.Max(top, r.RoofY);
+            }
+            layout.Overview = Rect.MinMaxRect(x0 - 4f, 0f, x1 + 4f, top + 4f);
             return layout;
         }
 

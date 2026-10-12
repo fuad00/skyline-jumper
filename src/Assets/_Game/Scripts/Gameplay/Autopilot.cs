@@ -44,7 +44,7 @@ namespace StickmanJumper.Gameplay
             {
                 case JumpPhase.Ready:
                     _lastMiss = float.NaN;
-                    if (float.IsNaN(DesiredRunUp))
+                    if (float.IsNaN(DesiredRunUp) && s.RunwayIndex == 0)
                     {
                         var plan = Plan(s);
                         DesiredRunUp = plan.RunUp;
@@ -53,7 +53,7 @@ namespace StickmanJumper.Gameplay
                     s.Tap();
                     return true;
                 case JumpPhase.BackingUp:
-                    if (s.Level.EdgeX - s.Feet.x >= DesiredRunUp)
+                    if (s.DistanceToEdge >= DesiredRunUp)
                     {
                         s.Tap();
                         return true;
@@ -63,7 +63,7 @@ namespace StickmanJumper.Gameplay
                     s.Tap();
                     return true;
                 case JumpPhase.Running:
-                    if (!NeverJump && s.Feet.x + s.Velocity.x * s.StepSize * 2f >= s.Level.EdgeX)
+                    if (!NeverJump && s.DistanceToEdge - Mathf.Abs(s.Velocity.x) * s.StepSize * 2f <= 0f)
                     {
                         s.Tap();
                         return true;

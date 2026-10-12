@@ -166,6 +166,54 @@ namespace StickmanJumper.Tests
             Assert.AreEqual(JumpOutcome.Died, s.Outcome);
         }
 
+        /// <summary>
+        /// Промежуточная платформа (как в оригинале): сел на неё — стоишь, купол сброшен, флажок «пройдено»;
+        /// следующий разбег — уже с неё и в её сторону (здесь — влево, обратно).
+        /// </summary>
+        [Test]
+        public void IntermediatePlatform_LandThenRunTheOtherWay()
+        {
+            var scene = ScriptableObject.CreateInstance<LevelScene>();
+            scene.Size = new Vector2(120f, 60f);
+            scene.Solids = new[] { new Rect(0f, 0f, 10f, 40f) };     // start building
+            scene.Runway = new Rect(0f, 40f, 10f, 1f);                // run right, jump at x = 10
+            scene.InterPlatforms = new[] { new Rect(12f, 30f, 68f, 1f) }; // a long platform 10 m lower, run left from it
+            scene.InterLeft = new[] { true };
+            scene.Platform = new Rect(100f, 0f, 10f, 0.5f);
+            var level = TestKit.Level(wind: 0f);
+            level.Scene = scene;
+            level.TimeLimit = 60f;
+            var s = TestKit.Session(level);
+            var events = new List<JumpEvent>();
+            s.Happened += events.Add;
+
+            var pilot = new Autopilot { DesiredRunUp = 4f, OpenRightAway = true };
+            for (int i = 0; i < 20000 && s.RunwayIndex == 0 && !s.Phase.IsFinished(); i++)
+            {
+                pilot.Update(s);
+                s.Step(s.StepSize);
+            }
+            Assert.AreEqual(1, s.RunwayIndex, $"ended {s.Outcome} at {s.Feet}");
+            Assert.AreEqual(JumpPhase.Ready, s.Phase);
+            Assert.Contains(JumpEvent.ReachedPlatform, events);
+            Assert.IsTrue(s.Reached(1));
+            Assert.IsFalse(s.CanopyDeployed, "a fresh canopy for the next jump");
+            Assert.AreEqual(30f, s.Feet.y, 1e-4f);
+            Assert.AreEqual(-1, s.Dir);
+
+            float x = s.Feet.x;
+            s.Tap(); // step back — to the right, away from the left edge
+            TestKit.StepFor(s, 1f);
+            Assert.Greater(s.Feet.x, x + 1f);
+            s.Tap(); // run left
+            TestKit.StepFor(s, 0.3f);
+            Assert.Less(s.Velocity.x, 0f);
+            s.Tap(); // jump left
+            Assert.AreEqual(JumpPhase.Airborne, s.Phase);
+            Assert.Less(s.Velocity.x, -s.Jump.JumpSpeedGate);
+            Object.DestroyImmediate(scene);
+        }
+
         [Test]
         public void WaitingTooLong_IsTimesUp()
         {

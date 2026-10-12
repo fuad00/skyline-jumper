@@ -18,6 +18,9 @@ namespace StickmanJumper.Audio
         bool _yelled;
         float _lastBones;
 
+        /// <summary>Заставка в меню: звуки прыжка молчат (музыка и кнопки — как обычно).</summary>
+        public bool Quiet { get; set; }
+
         public AudioService(GameObject host, SoundBank bank)
         {
             _bank = bank;
@@ -59,7 +62,7 @@ namespace StickmanJumper.Audio
 
         public void Update(JumpSession s, bool ragdoll, float dt)
         {
-            float fx = _bank.EffectsVolume;
+            float fx = Quiet ? 0f : _bank.EffectsVolume;
             Ensure(_wind, Mathf.Clamp01(Mathf.Abs(s.Level.Wind) / 6f) * 0.35f * fx, dt);
 
             float speed = s.Velocity.magnitude;
@@ -82,6 +85,7 @@ namespace StickmanJumper.Audio
 
         public void OnEvent(JumpEvent e, JumpSession s)
         {
+            if (Quiet) return;
             switch (e)
             {
                 case JumpEvent.Jumped:
@@ -89,6 +93,9 @@ namespace StickmanJumper.Audio
                     break;
                 case JumpEvent.CanopyDeployed:
                     Play(_bank.CanopyOpen, 1f);
+                    break;
+                case JumpEvent.ReachedPlatform:
+                    PlayRandom(_bank.Landing, 0.9f);
                     break;
                 case JumpEvent.Landed:
                     PlayRandom(_bank.Landing, 0.9f);
@@ -104,6 +111,7 @@ namespace StickmanJumper.Audio
         /// <summary>Удар части ragdoll — хруст, не чаще раза в 0.12 с. Первый сильный удар — ещё и крик.</summary>
         public void OnRagdollImpact(float speed)
         {
+            if (Quiet) return;
             if (speed >= YellImpactSpeed) Yell();
             if (speed < 4f || Time.unscaledTime - _lastBones < 0.12f) return;
             _lastBones = Time.unscaledTime;

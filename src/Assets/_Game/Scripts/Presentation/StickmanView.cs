@@ -37,6 +37,7 @@ namespace StickmanJumper.Presentation
         readonly CanopyView _canopy;
         readonly CharacterRig _rig;
         Rigidbody2D _torso;
+        SpriteRenderer _halo;
         float _spin;
         JumpPhase _phaseBefore = JumpPhase.Ready;
         SpriteRenderer _headRenderer;
@@ -113,8 +114,19 @@ namespace StickmanJumper.Presentation
             ApplyPose();
         }
 
+        /// <summary>Ночью за стикменом мягкий светлый ореол — иначе чёрный силуэт не виден на чёрном небе.</summary>
+        public void SetNight(bool night)
+        {
+            if (!night || _halo != null || _art.Glow == null) return;
+            _halo = _kit.Make("NightHalo", _root.parent, _art.Glow, SortOrder.StickmanBack - 1, new Color(1f, 1f, 1f, 0.33f));
+            float s = 4.4f / Mathf.Max(0.01f, _art.Glow.bounds.size.x);
+            _halo.transform.localScale = new Vector3(s, s, 1f);
+            _halo.transform.position = Center;
+        }
+
         public void Destroy()
         {
+            if (_halo != null) UnityEngine.Object.Destroy(_halo.gameObject);
             if (_rig != null)
             {
                 _rig.Destroy();
@@ -176,7 +188,8 @@ namespace StickmanJumper.Presentation
             else _phaseTime += dt;
 
             // Walking back he turns his back to the edge; otherwise he faces the jump direction (instant flip, like the original).
-            _facing = s.Phase == JumpPhase.BackingUp || s.Phase == JumpPhase.AtBackWall ? -1f : 1f;
+            // The direction is the current runway's: on an intermediate platform the next run may go to the left.
+            _facing = s.Phase == JumpPhase.BackingUp || s.Phase == JumpPhase.AtBackWall ? -s.Dir : s.Dir;
             if (_rig != null)
             {
                 UpdateRig(s, dt);
@@ -212,7 +225,7 @@ namespace StickmanJumper.Presentation
                     canopy = true;
                     open = s.Canopy;
                     // Swings under the canopy: leans against the drift, plus a slow sway.
-                    targetSpin = Mathf.Clamp(-(s.Velocity.x - s.Level.Wind) * 2.5f, -16f, 16f) + Mathf.Sin(_time * 1.3f) * 4f;
+                    targetSpin = _facing * Mathf.Clamp(-(s.Velocity.x - s.Level.Wind) * 2.5f, -16f, 16f) + Mathf.Sin(_time * 1.3f) * 4f;
                     spinSharpness = 4f;
                     break;
                 case JumpPhase.Airborne:
@@ -373,6 +386,13 @@ namespace StickmanJumper.Presentation
             BecomeRagdoll(velocity, seed);
         }
 
+        /// <summary>Сел на промежуточную платформу: купол отпадает и улетает, к следующему прыжку будет новый.</summary>
+        public void DropCanopy(Vector2 velocity)
+        {
+            if (_ragdoll || _rig == null) return;
+            _rig.DetachCanopy(_root.parent, velocity);
+        }
+
         /// <summary>Дальше тело падает само. velocity — скорость в момент удара/срыва.</summary>
         public void BecomeRagdoll(Vector2 velocity, int seed)
         {
@@ -485,6 +505,7 @@ namespace StickmanJumper.Presentation
         /// <summary>Отделившийся купол продолжает падать сам.</summary>
         public void UpdateDetached(float dt)
         {
+            if (_halo != null) _halo.transform.position = Center;
             if (_rig != null) _rig.UpdateDetached(dt);
             else _canopy.UpdateDetached(dt);
         }

@@ -70,6 +70,29 @@ namespace StickmanJumper.Tests
             Assert.LessOrEqual(failed.Count, 3, "not solvable: " + string.Join(" ", failed));
         }
 
+        /// <summary>
+        /// Заставка в меню всегда попадает: каждый уровень с планом заставки, проигранный как в игре (кадрами по 1/60 и 1/30 с,
+        /// автопилот перед каждым шагом физики), садится на флажок.
+        /// </summary>
+        [Test]
+        public void MenuDemo_AlwaysLandsOnTheFlag()
+        {
+            var jump = Jump();
+            var flight = Flight();
+            var demo = All().Select(x => x.level).Where(l => !float.IsNaN(l.DemoRunUp)).ToList();
+            Assert.Greater(demo.Count, 0, "no level for the menu demo (run Setup Project)");
+            var failed = new List<string>();
+            foreach (var level in demo)
+                foreach (float frame in new[] { 1f / 60f, 1f / 30f })
+                {
+                    var s = new JumpSession(LevelLayout.Build(level, jump), jump, flight);
+                    var pilot = new Autopilot { DesiredRunUp = level.DemoRunUp, OpenAtY = level.DemoOpenY };
+                    for (int i = 0; i < 6000 && !s.Phase.IsFinished(); i++) s.Advance(frame, x => pilot.Update(x));
+                    if (s.Outcome != JumpOutcome.WellDone) failed.Add($"{level.Id} @{1f / frame:0} fps: {s.Outcome}");
+                }
+            Assert.IsEmpty(failed, string.Join("\n", failed));
+        }
+
         /// <summary>Решается ли уровень (автопилот находит разбег и купол, повтор плана садится на цель вовремя).</summary>
         static bool Solvable(LevelLayout layout, JumpConfig jump, FlightConfig flight, out float miss)
         {

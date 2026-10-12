@@ -70,6 +70,7 @@ namespace StickmanJumper.EditorTools
             _levelShot = 0;
             _tourStep = 0;
             _runDStep = 0;
+            _extraShot = 0;
             _peak = 0f;
 
             var violations = PlaceholderGuard.FindViolations();
@@ -112,7 +113,14 @@ namespace StickmanJumper.EditorTools
             switch (_phase)
             {
                 case 0: // main menu, stage and level select (the game starts in the menu, like the original)
-                    if (Wait(1.2)) { Snap("00_main_menu"); Next(); }
+                    if (Wait(3.5))
+                    {
+                        // The menu demo plays behind the menu (random levels, always lands).
+                        Log($"menu demo: {g.DemoLevelCount} levels, playing: {g.DemoRunning}");
+                        if (g.DemoLevelCount > 0 && !g.DemoRunning) Fail("the menu demo is not playing");
+                        Snap("00_main_menu");
+                        Next();
+                    }
                     break;
                 case 1: // menu tour: settings, «are you sure?», map builder stub, English
                     if (MenuTour(g)) _phase = 9;
@@ -260,13 +268,30 @@ namespace StickmanJumper.EditorTools
                         else Next();
                     }
                     break;
-                case 29:
+                case 29: // a few levels from later stages: intermediate platforms (flags, rulers), the night pack
+                    if (_extraShot >= ExtraLevels.Length || ExtraLevels[_extraShot].stage >= g.Catalog.Stages.Length) { _phase = 31; break; }
+                    g.StartLevel(ExtraLevels[_extraShot].stage, ExtraLevels[_extraShot].level);
+                    Next();
+                    break;
+                case 30:
+                    if (Wait(1.0))
+                    {
+                        Snap(ExtraLevels[_extraShot].shot);
+                        _extraShot++;
+                        _phase = 29;
+                    }
+                    break;
+                case 31:
                     Finish();
                     break;
             }
         }
 
-        static int _levelShot, _tourStep, _runDStep;
+        static int _levelShot, _tourStep, _runDStep, _extraShot;
+        static readonly (int stage, int level, string shot)[] ExtraLevels =
+        {
+            (2, 0, "lvx_expert1_platform"), (2, 3, "lvx_expert4_two_platforms"), (5, 4, "lvx_heli_x05"), (8, 0, "lvx_night_n9"),
+        };
         static float _takeoffAt;
 
         /// <summary>Шаг тура по меню: действие, пауза, снимок. Действие следующего шага — только после снимка.</summary>

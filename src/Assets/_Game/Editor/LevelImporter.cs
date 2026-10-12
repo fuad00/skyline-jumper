@@ -237,6 +237,8 @@ namespace StickmanJumper.EditorTools
             var pictures = new List<LevelScene.Picture>();
             var solids = new List<Rect>();
             var inter = new List<Rect>();
+            var interLeft = new List<bool>();
+            var lights = new List<LevelScene.LightSource>();
             foreach (var n in nodes)
             {
                 string type = Str(n, "Type"), cls = Str(n, "className");
@@ -255,6 +257,7 @@ namespace StickmanJumper.EditorTools
                         Layer = Mathf.RoundToInt(Num(n, "zOrder")),
                         Alpha = Mathf.Clamp01(Num(n, "opacity", 255f) / 255f),
                         Kind = cls,
+                        AlwaysLit = NodeKeys(n).TryGetValue("objectLighting", out var lit) && lit == "1",
                     });
                     // Breakable glass and birds are not walls (in the original you fly through them).
                     if (Str(n, "enablePhysics") != "1" || cls == "Glass" || cls == "Bird") continue;
@@ -282,7 +285,24 @@ namespace StickmanJumper.EditorTools
                     {
                         case "Runway": scene.Runway = Box(n); break;
                         case "Platform": scene.Platform = Box(n); break;
-                        case "InterPlatform": inter.Add(Box(n)); break;
+                        case "InterPlatform":
+                            inter.Add(Box(n));
+                            // direction 1 = run to the left in the file; mirrored levels swap left and right
+                            interLeft.Add((NodeKeys(n).TryGetValue("direction", out var d) && d == "1") != mirror);
+                            break;
+                        case "Light":
+                        {
+                            var lightKeys = NodeKeys(n);
+                            float Radius(string k, float fallback) =>
+                                lightKeys.TryGetValue(k, out var r) && float.TryParse(r, NumberStyles.Float, CultureInfo.InvariantCulture, out var f) ? f : fallback;
+                            lights.Add(new LevelScene.LightSource
+                            {
+                                Position = Point(Num(n, "position.x"), Num(n, "position.y")),
+                                RadiusFull = Radius("radiusHigh", 300f) / UnitsPerMeter,
+                                RadiusFade = Radius("radiusLow", 500f) / UnitsPerMeter,
+                            });
+                            break;
+                        }
                         case "PhysicDummy":
                             if (NodeKeys(n).TryGetValue("sensor", out var sensor) && sensor == "1") break; // a trigger, not a wall
                             solids.Add(Box(n));
@@ -303,6 +323,8 @@ namespace StickmanJumper.EditorTools
             scene.Pictures = pictures.ToArray();
             scene.Solids = solids.ToArray();
             scene.InterPlatforms = inter.ToArray();
+            scene.InterLeft = interLeft.ToArray();
+            scene.Lights = lights.ToArray();
         }
 
         /// <summary>Картинка уровня, если не скрыта (LightSprite — обычная картинка, которая ещё и светится ночью).</summary>

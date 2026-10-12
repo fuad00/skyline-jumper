@@ -16,7 +16,7 @@ namespace StickmanJumper.EditorTools
     /// </summary>
     public static class ProjectSetup
     {
-        const string Root = "Assets/_Game";
+        public const string Root = "Assets/_Game";
         public const string ScenePath = Root + "/Scenes/Game.unity";
         static readonly Color SkyColor = new Color(0.9f, 0.89f, 0.85f); // paper, in case the sheet sprite is missing
 
@@ -37,6 +37,7 @@ namespace StickmanJumper.EditorTools
             EnsureCatalog();
             FillArtBank(EnsureAsset<ArtBank>("ArtBank"));
             FillSoundBank(EnsureAsset<SoundBank>("SoundBank"));
+            DemoPlans.Compute(); // the menu demo: which levels the autopilot lands, and how
             EnsurePanelSettings();
             AssetDatabase.SaveAssets();
 
@@ -207,6 +208,7 @@ namespace StickmanJumper.EditorTools
             art.Limb = GeneratedArt.Load("Limb");
             art.Paper = PlaceholderImporter.LoadSprite("paper") ?? GeneratedArt.Load("Paper");
             art.FogBand = GeneratedArt.Load("FogBand");
+            art.Glow = GeneratedArt.Load("Glow");
             art.Dash = GeneratedArt.Load("Dash");
             art.Star = GeneratedArt.Load("Star");
             art.StarEmpty = GeneratedArt.Load("StarEmpty");
@@ -237,6 +239,7 @@ namespace StickmanJumper.EditorTools
             art.CanopyOpen = PlaceholderImporter.LoadSprite("paraHolder");
             art.Flag = PlaceholderImporter.LoadSprite("flag");
             art.FlagLast = PlaceholderImporter.LoadSprite("lastFlag");
+            art.FlagGreen = PlaceholderImporter.LoadSprite("flagGreen");
             art.Digits = LoadAll("digit0", "digit1", "digit2", "digit3", "digit4", "digit5", "digit6", "digit7", "digit8", "digit9");
             art.Skyline = PlaceholderImporter.LoadSprite("skyline");
             art.Clouds = LoadAll("cloud1", "cloud2", "cloud3");
