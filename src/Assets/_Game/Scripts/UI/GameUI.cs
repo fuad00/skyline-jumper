@@ -8,7 +8,7 @@ using UnityEngine.UIElements;
 
 namespace StickmanJumper.UI
 {
-    public enum UIScreen { None, MainMenu, StageSelect, LevelSelect, Game, Summary }
+    public enum UIScreen { None, MainMenu, Settings, StageSelect, LevelSelect, Game, Summary }
 
     /// <summary>Что показать на карточке этапа.</summary>
     public struct StageCardView
@@ -19,6 +19,22 @@ namespace StickmanJumper.UI
         public bool Locked, Empty;
     }
 
+    /// <summary>Кнопка окна-вопроса: «мелкая / КРУПНАЯ» подпись, цвет и действие.</summary>
+    public struct DialogButton
+    {
+        public string Small, Big;
+        public Color Fill;
+        public Action OnClick;
+
+        public DialogButton(string small, string big, Color fill, Action onClick)
+        {
+            Small = small;
+            Big = big;
+            Fill = fill;
+            OnClick = onClick;
+        }
+    }
+
     /// <summary>Что показать на плитке уровня.</summary>
     public struct LevelNodeView
     {
@@ -27,8 +43,10 @@ namespace StickmanJumper.UI
     }
 
     /// <summary>
-    /// Связывает Game.uxml. Экраны как в оригинале: главное меню (логотип + нижняя панель), выбор этапа, выбор уровня,
-    /// игра (HUD), пауза и итог прыжка. Кнопки нижних панелей — <see cref="SlantButton"/>.
+    /// Связывает Game.uxml. Экраны как в оригинале: главное меню (логотип + нижняя панель), настройки (та же панель
+    /// с другими кнопками), выбор этапа, выбор уровня, игра (HUD), пауза и итог прыжка, поверх — окно-вопрос.
+    /// Кнопки нижних панелей — <see cref="SlantButton"/>. Все подписи берутся из <see cref="UIText"/>:
+    /// <see cref="ApplyLanguage"/> переписывает их на текущем языке.
     /// Тап в любом месте экрана во время игры (кроме кнопок) — это ход игрока.
     /// </summary>
     public sealed class GameUI
@@ -38,7 +56,9 @@ namespace StickmanJumper.UI
         static readonly Color MapLast = new Color(0.12f, 0.62f, 0.22f, 1f);
 
         readonly ArtBank _art;
-        readonly VisualElement _root, _hud, _menu, _stageScreen, _levelScreen, _summary, _pauseOverlay;
+        readonly VisualElement _root, _hud, _menu, _menuBar, _settingsBar, _stageScreen, _levelScreen, _summary, _pauseOverlay;
+        readonly VisualElement _dialog, _dialogBar;
+        readonly Label _dialogTitle, _dialogText;
         readonly VisualElement _minimap, _windFill, _windArrow, _stageCards, _levelGrid, _levelBadge, _summaryFace;
         readonly Label _time, _hint;
         readonly VisualElement _hintBox;
@@ -46,19 +66,26 @@ namespace StickmanJumper.UI
         readonly Label _titleSmall, _titleBig, _levelLine, _distance, _best, _points, _record;
         readonly VisualElement[] _stars = new VisualElement[3];
         readonly Button _zoom;
-        readonly SlantButton _soundButton, _musicButton, _nextButton;
+        readonly SlantButton _nextButton;
+        /// <summary>Кнопки и их подписи на текущем языке (переписываются при смене языка).</summary>
+        readonly List<(SlantButton button, Func<string> small, Func<string> big)> _buttons = new List<(SlantButton, Func<string>, Func<string>)>();
+        readonly Dictionary<Label, Func<string>> _texts = new Dictionary<Label, Func<string>>();
+        bool _soundOn = true, _musicOn = true;
+        Action _dialogBack;
 
         LevelLayout _mapLayout;
         Vector2 _mapPlayer;
         float _mapLastX = float.NaN;
 
         public event Action Tapped, PlayClicked, SoundClicked, MusicClicked, BackClicked;
+        public event Action SettingsClicked, BuilderClicked, LanguageClicked, ResetClicked;
         public event Action MenuClicked, RetryClicked, NextClicked, ContinueClicked, PauseClicked, ZoomClicked;
         public event Action<int> StageClicked, LevelClicked;
 
         public UIScreen Screen { get; private set; } = UIScreen.None;
         public bool SummaryVisible => Screen == UIScreen.Summary;
         public bool PauseVisible { get; private set; }
+        public bool DialogVisible { get; private set; }
 
         public GameUI(VisualElement root, ArtBank art)
         {
@@ -66,6 +93,12 @@ namespace StickmanJumper.UI
             _root = root.Q<VisualElement>("root");
             _hud = root.Q<VisualElement>("hud");
             _menu = root.Q<VisualElement>("menu-screen");
+            _menuBar = root.Q<VisualElement>("menu-bar");
+            _settingsBar = root.Q<VisualElement>("settings-bar");
+            _dialog = root.Q<VisualElement>("dialog");
+            _dialogBar = root.Q<VisualElement>("dialog-bar");
+            _dialogTitle = root.Q<Label>("dialog-title");
+            _dialogText = root.Q<Label>("dialog-text");
             _stageScreen = root.Q<VisualElement>("stage-screen");
             _levelScreen = root.Q<VisualElement>("level-screen");
             _summary = root.Q<VisualElement>("summary");
@@ -90,19 +123,19 @@ namespace StickmanJumper.UI
             _zoom = root.Q<Button>("zoom");
             for (int i = 0; i < 3; i++) _stars[i] = root.Q<VisualElement>($"star-{i + 1}");
 
-            root.Q<Label>("wind-label").text = UIText.Wind;
-            root.Q<Label>("pause-title").text = UIText.Pause;
             root.Q<Label>("logo-top").text = UIText.LogoTop;
             root.Q<Label>("logo-bottom").text = UIText.LogoBottom;
-            root.Q<Label>("stage-heading-small").text = UIText.Choose;
-            root.Q<Label>("stage-heading-big").text = UIText.StageWord;
-            root.Q<Label>("level-heading-small").text = UIText.Choose;
-            root.Q<Label>("level-heading-big").text = UIText.LevelWord;
-            root.Q<Label>("distance-label").text = UIText.DistanceLabel;
-            root.Q<Label>("best-label").text = UIText.BestLabel;
-            root.Q<Label>("points-small").text = UIText.PointsSmall;
-            root.Q<Label>("points-big").text = UIText.PointsBig;
-            _record.text = UIText.NewBest;
+            _texts[root.Q<Label>("wind-label")] = () => UIText.Wind;
+            _texts[root.Q<Label>("pause-title")] = () => UIText.Pause;
+            _texts[root.Q<Label>("stage-heading-small")] = () => UIText.Choose;
+            _texts[root.Q<Label>("stage-heading-big")] = () => UIText.StageWord;
+            _texts[root.Q<Label>("level-heading-small")] = () => UIText.Choose;
+            _texts[root.Q<Label>("level-heading-big")] = () => UIText.LevelWord;
+            _texts[root.Q<Label>("distance-label")] = () => UIText.DistanceLabel;
+            _texts[root.Q<Label>("best-label")] = () => UIText.BestLabel;
+            _texts[root.Q<Label>("points-small")] = () => UIText.PointsSmall;
+            _texts[root.Q<Label>("points-big")] = () => UIText.PointsBig;
+            _texts[_record] = () => UIText.NewBest;
 
             // Plates drawn in code, in the original's style.
             Plate.Dress(root.Q<VisualElement>("wind-panel"), Plate.Kind.Hud, 22f, 5f);
@@ -114,35 +147,40 @@ namespace StickmanJumper.UI
             Plate.Dress(root.Q<VisualElement>("points-bar"), Plate.Kind.Rimmed, 26f, 6f, UIShapes.Red);
             _clock = new ClockDial();
             root.Q<VisualElement>("clock-slot").Add(_clock);
-            foreach (var bar in new[] { "menu-bar", "stage-bar", "level-bar", "pause-bar", "summary-bar" })
+            Plate.Dress(root.Q<VisualElement>("dialog-card"), Plate.Kind.Dark, 40f, 8f);
+            foreach (var bar in new[] { "menu-bar", "settings-bar", "stage-bar", "level-bar", "pause-bar", "summary-bar" })
                 Plate.Dress(root.Q<VisualElement>(bar), Plate.Kind.Dark, 24f, 7f);
 
-            // Bottom bars, like the original: coloured slanted segments on a dark plate, blanks fill the rest.
-            var menuBar = root.Q<VisualElement>("menu-bar");
-            menuBar.Add(new SlantButton(UIText.PlaySmall, UIText.PlayBig, SlantButton.Red, () => PlayClicked?.Invoke(), first: true));
-            _soundButton = new SlantButton(UIText.SoundSmall, UIText.On, SlantButton.Blue, () => SoundClicked?.Invoke());
-            menuBar.Add(_soundButton);
-            _musicButton = new SlantButton(UIText.MusicSmall, UIText.On, SlantButton.Blue, () => MusicClicked?.Invoke());
-            menuBar.Add(_musicButton);
-            menuBar.Add(SlantButton.Blank());
-            menuBar.Add(SlantButton.Blank(last: true));
+            // Bottom bars, like the original: 5 coloured slanted cells on a dark plate, blanks fill the rest.
+            _menuBar.Add(Btn(() => UIText.PlaySmall, () => UIText.PlayBig, SlantButton.Red, () => PlayClicked?.Invoke(), first: true));
+            _menuBar.Add(Btn(null, () => UIText.SettingsBig, SlantButton.Blue, () => SettingsClicked?.Invoke()));
+            _menuBar.Add(Btn(() => UIText.BuilderSmall, () => UIText.BuilderBig, SlantButton.Blue, () => BuilderClicked?.Invoke()));
+            _menuBar.Add(SlantButton.Blank());
+            _menuBar.Add(SlantButton.Blank(last: true));
 
-            Bar(root.Q<VisualElement>("stage-bar"), new SlantButton(null, UIText.Back, SlantButton.Red, () => BackClicked?.Invoke(), first: true));
-            Bar(root.Q<VisualElement>("level-bar"), new SlantButton(null, UIText.Back, SlantButton.Red, () => BackClicked?.Invoke(), first: true));
+            _settingsBar.Add(Btn(null, () => UIText.Back, SlantButton.Red, () => BackClicked?.Invoke(), first: true));
+            _settingsBar.Add(Btn(() => UIText.SoundSmall, () => _soundOn ? UIText.On : UIText.Off, SlantButton.Blue, () => SoundClicked?.Invoke()));
+            _settingsBar.Add(Btn(() => UIText.MusicSmall, () => _musicOn ? UIText.On : UIText.Off, SlantButton.Blue, () => MusicClicked?.Invoke()));
+            _settingsBar.Add(Btn(() => UIText.LanguageSmall, () => UIText.LanguageBig, SlantButton.Blue, () => LanguageClicked?.Invoke()));
+            _settingsBar.Add(Btn(() => UIText.ResetSmall, () => UIText.ResetBig, SlantButton.Blue, () => ResetClicked?.Invoke(), last: true));
 
+            Bar(root.Q<VisualElement>("stage-bar"), Btn(null, () => UIText.Back, SlantButton.Red, () => BackClicked?.Invoke(), first: true));
+            Bar(root.Q<VisualElement>("level-bar"), Btn(null, () => UIText.Back, SlantButton.Red, () => BackClicked?.Invoke(), first: true));
+
+            // Same cells as the original's pause: menu first, retry fourth, continue last.
             var pauseBar = root.Q<VisualElement>("pause-bar");
-            pauseBar.Add(new SlantButton(UIText.MenuSmall, UIText.MenuBig, SlantButton.Red, () => MenuClicked?.Invoke(), first: true));
-            pauseBar.Add(new SlantButton(UIText.RetrySmall, UIText.RetryBig, SlantButton.Blue, () => RetryClicked?.Invoke()));
+            pauseBar.Add(Btn(() => UIText.MenuSmall, () => UIText.MenuBig, SlantButton.Red, () => MenuClicked?.Invoke(), first: true));
             pauseBar.Add(SlantButton.Blank());
             pauseBar.Add(SlantButton.Blank());
-            pauseBar.Add(new SlantButton(UIText.ContinueSmall, UIText.ContinueBig, SlantButton.Green, () => ContinueClicked?.Invoke(), last: true));
+            pauseBar.Add(Btn(() => UIText.RetrySmall, () => UIText.RetryBig, SlantButton.Blue, () => RetryClicked?.Invoke()));
+            pauseBar.Add(Btn(() => UIText.ContinueSmall, () => UIText.ContinueBig, SlantButton.Green, () => ContinueClicked?.Invoke(), last: true));
 
             var summaryBar = root.Q<VisualElement>("summary-bar");
-            summaryBar.Add(new SlantButton(UIText.MenuSmall, UIText.MenuBig, SlantButton.Red, () => MenuClicked?.Invoke(), first: true));
-            summaryBar.Add(new SlantButton(UIText.RetrySmall, UIText.RetryBig, SlantButton.Blue, () => RetryClicked?.Invoke()));
+            summaryBar.Add(Btn(() => UIText.MenuSmall, () => UIText.MenuBig, SlantButton.Red, () => MenuClicked?.Invoke(), first: true));
             summaryBar.Add(SlantButton.Blank());
             summaryBar.Add(SlantButton.Blank());
-            _nextButton = new SlantButton(UIText.NextSmall, UIText.NextBig, SlantButton.Green, () => NextClicked?.Invoke(), last: true);
+            summaryBar.Add(Btn(() => UIText.RetrySmall, () => UIText.RetryBig, SlantButton.Blue, () => RetryClicked?.Invoke()));
+            _nextButton = Btn(() => UIText.NextSmall, () => UIText.NextBig, SlantButton.Green, () => NextClicked?.Invoke(), last: true);
             summaryBar.Add(_nextButton);
 
             _zoom.clicked += () => ZoomClicked?.Invoke();
@@ -162,8 +200,25 @@ namespace StickmanJumper.UI
                 Tapped?.Invoke();
             });
 
+            ApplyLanguage();
             ShowPause(false);
+            HideDialog();
             Show(UIScreen.None);
+        }
+
+        /// <summary>Кнопка панели, подписи которой следуют за языком.</summary>
+        SlantButton Btn(Func<string> small, Func<string> big, Color fill, Action onClick, bool first = false, bool last = false)
+        {
+            var b = new SlantButton(small?.Invoke(), big?.Invoke(), fill, onClick, first, last);
+            _buttons.Add((b, small, big));
+            return b;
+        }
+
+        /// <summary>Переписать все подписи на текущем языке (<see cref="UIText.Lang"/>).</summary>
+        public void ApplyLanguage()
+        {
+            foreach (var pair in _texts) pair.Key.text = pair.Value();
+            foreach (var (button, small, big) in _buttons) button.SetLabels(small?.Invoke(), big?.Invoke());
         }
 
         /// <summary>Как в оригинале: 5 сегментов, первый — кнопка, остальные пустые.</summary>
@@ -212,7 +267,9 @@ namespace StickmanJumper.UI
         public void Show(UIScreen screen)
         {
             Screen = screen;
-            Display(_menu, screen == UIScreen.MainMenu);
+            Display(_menu, screen == UIScreen.MainMenu || screen == UIScreen.Settings);
+            Display(_menuBar, screen != UIScreen.Settings);
+            Display(_settingsBar, screen == UIScreen.Settings);
             Display(_stageScreen, screen == UIScreen.StageSelect);
             Display(_levelScreen, screen == UIScreen.LevelSelect);
             Display(_summary, screen == UIScreen.Summary);
@@ -222,8 +279,41 @@ namespace StickmanJumper.UI
 
         public void SetSound(bool sound, bool music)
         {
-            _soundButton.SetLabels(UIText.SoundSmall, sound ? UIText.On : UIText.Off);
-            _musicButton.SetLabels(UIText.MusicSmall, music ? UIText.On : UIText.Off);
+            _soundOn = sound;
+            _musicOn = music;
+            ApplyLanguage();
+        }
+
+        /// <summary>
+        /// Окно поверх всего: заголовок, пояснение и 1–2 кнопки. Кнопка «назад» на телефоне жмёт первую кнопку.
+        /// </summary>
+        public void ShowDialog(string title, string text, params DialogButton[] buttons)
+        {
+            _dialogTitle.text = title;
+            _dialogText.text = text;
+            _dialogBar.Clear();
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                var b = buttons[i];
+                _dialogBar.Add(new SlantButton(b.Small, b.Big, b.Fill, b.OnClick, first: i == 0, last: i == buttons.Length - 1));
+            }
+            _dialogBack = buttons.Length > 0 ? buttons[0].OnClick : null;
+            DialogVisible = true;
+            Display(_dialog, true);
+        }
+
+        public void HideDialog()
+        {
+            DialogVisible = false;
+            _dialogBack = null;
+            Display(_dialog, false);
+        }
+
+        /// <summary>Кнопка «назад» (Esc) при открытом окне — как первая кнопка окна («отмена»/«понятно»).</summary>
+        public void DialogBack()
+        {
+            if (_dialogBack != null) _dialogBack();
+            else HideDialog();
         }
 
         public void ShowPause(bool show)

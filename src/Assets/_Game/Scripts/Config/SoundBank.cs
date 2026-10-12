@@ -19,7 +19,7 @@ namespace StickmanJumper.Config
         public AudioClip[] Landing = new AudioClip[0];
 
         [Header("Падения")]
-        [Tooltip("Крики: при срыве с края и при падении без парашюта.")]
+        [Tooltip("Крики боли: один за попытку, в момент удара (разбился или сильно ударился после срыва с края).")]
         public AudioClip[] Yells = new AudioClip[0];
         public AudioClip[] Bones = new AudioClip[0];
         public AudioClip[] Smash = new AudioClip[0];

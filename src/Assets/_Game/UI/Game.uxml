@@ -41,6 +41,8 @@
                 <ui:Label name="logo-bottom" class="sticker sticker--logo" text="jumper" picking-mode="Ignore" />
             </ui:VisualElement>
             <ui:VisualElement name="menu-bar" class="bar" picking-mode="Ignore" />
+            <!-- settings: like the original's Options, the same bar swaps its buttons -->
+            <ui:VisualElement name="settings-bar" class="bar" picking-mode="Ignore" />
         </ui:VisualElement>
 
         <!-- ===== stage select ===== -->
@@ -106,6 +108,15 @@
                 </ui:VisualElement>
             </ui:VisualElement>
             <ui:VisualElement name="summary-bar" class="bar" picking-mode="Ignore" />
+        </ui:VisualElement>
+
+        <!-- ===== dialog: «are you sure?» and the map builder stub (blocks touches underneath) ===== -->
+        <ui:VisualElement name="dialog" class="screen screen--dim dialog">
+            <ui:VisualElement name="dialog-card" class="dialog-card" picking-mode="Ignore">
+                <ui:Label name="dialog-title" class="dialog-title" picking-mode="Ignore" />
+                <ui:Label name="dialog-text" class="dialog-text" picking-mode="Ignore" />
+                <ui:VisualElement name="dialog-bar" class="dialog-bar" picking-mode="Ignore" />
+            </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

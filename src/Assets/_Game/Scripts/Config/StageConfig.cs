@@ -12,6 +12,10 @@ namespace StickmanJumper.Config
         public string Title = "новичок";
         [Tooltip("Подпись под названием.")]
         public string Subtitle = "первые прыжки";
+        [Tooltip("Название этапа по-английски (если пусто — показываем русское).")]
+        public string TitleEn = "rookie";
+        [Tooltip("Подпись под названием по-английски.")]
+        public string SubtitleEn = "first jumps";
         [Tooltip("Сколько звёзд нужно собрать на прошлых этапах, чтобы открыть этот.")]
         public int StarsToUnlock;
         [Tooltip("Уровни этапа по порядку.")]

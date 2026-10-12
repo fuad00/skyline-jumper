@@ -17,5 +17,5 @@ MonoBehaviour:
   BackWallMargin: 0.8
   RunAcceleration: 5
   RunMaxSpeed: 10
-  JumpUpSpeed: 5.2
+  JumpUpSpeed: 7.5
   EdgeOverrun: 0.15

@@ -193,20 +193,24 @@
 
 .bar {
     position: absolute;
-    left: 16px;
-    right: 16px;
-    bottom: -30px;
-    height: 186px;
+    left: 50%;
+    bottom: -34px;
+    width: 1650px;
+    max-width: 96%;
+    height: 230px;
+    translate: -50% 0;
     flex-direction: row;
-    padding: 20px 20px 50px 20px;
+    padding: 22px 22px 56px 22px;
 }
 
-/* gap 12 px between neighbours: margin = gap − slant (slant = 0.22 × 116 px) */
+/* Like the original's button frame: 5 equal cells, each about twice as wide as tall, the whole bar centred
+   (the original frame is 472 x 63 pt on a 568 x 320 screen). Button height 152 px, slant 0.22 x 152 = 33 px,
+   gap 12 px between neighbours: margin = gap - slant. Label sizes are set in code (SlantButton) and shrink to fit. */
 .slant {
     flex-grow: 1;
     flex-basis: 0;
-    margin: 0 -13px 0 0;
-    padding: 4px 30px 0 52px;
+    margin: 0 -21px 0 0;
+    padding: 4px 40px 0 58px;
     border-width: 0;
     border-radius: 0;
     background-color: rgba(0, 0, 0, 0);
@@ -220,6 +224,7 @@
 
 .slant--last {
     margin-right: 0;
+    padding-right: 26px;
 }
 
 .slant:hover, .slant:active, .slant:focus, .slant:disabled {
@@ -228,16 +233,16 @@
 }
 
 .slant-small {
-    font-size: 32px;
     color: rgb(255, 255, 255);
+    white-space: nowrap;
     margin: 0 0 -12px 2px;
     padding: 0;
     text-shadow: 0 2px 2px rgba(0, 0, 0, 0.25);
 }
 
 .slant-big {
-    font-size: 60px;
     color: rgb(255, 255, 255);
+    white-space: nowrap;
     margin: 0;
     padding: 0;
     text-shadow: 0 3px 3px rgba(0, 0, 0, 0.3);
@@ -631,4 +636,45 @@
     color: rgb(255, 255, 255);
     margin: 0;
     padding: 0;
+}
+
+/* ---------- dialog («are you sure?», map builder stub): dark card like the summary, buttons below ---------- */
+
+.dialog {
+    justify-content: center;
+}
+
+.dialog-card {
+    width: 1080px;
+    margin-bottom: 90px;
+    padding: 50px 60px 44px 60px;
+    align-items: center;
+}
+
+.dialog-title {
+    font-size: 88px;
+    color: rgb(255, 255, 255);
+    -unity-text-align: middle-center;
+    margin: 0 0 10px 0;
+    padding: 0;
+}
+
+.dialog-text {
+    font-size: 40px;
+    color: rgb(196, 230, 244);
+    -unity-text-align: middle-center;
+    white-space: normal;
+    margin: 0 0 40px 0;
+    padding: 0;
+}
+
+.dialog-bar {
+    flex-direction: row;
+    height: 152px;
+}
+
+.dialog-bar .slant {
+    flex-grow: 0;
+    flex-basis: auto;
+    width: 340px;
 }

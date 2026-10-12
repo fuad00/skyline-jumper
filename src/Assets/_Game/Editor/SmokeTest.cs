@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO;
 using StickmanJumper.Core;
 using StickmanJumper.Gameplay;
+using StickmanJumper.UI;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -29,6 +30,7 @@ namespace StickmanJumper.EditorTools
         static bool _hooked;
         static string _pendingSnap;
         static int _snapFrames;
+        static float _peak;
         static RenderTexture _uiRt;
         static readonly HashSet<string> Shots = new HashSet<string>();
         static readonly List<string> Lines = new List<string>();
@@ -64,6 +66,8 @@ namespace StickmanJumper.EditorTools
             SessionState.SetBool(BackgroundKey, Application.runInBackground);
             Application.runInBackground = true;
             _levelShot = 0;
+            _tourStep = 0;
+            _peak = 0f;
 
             var violations = PlaceholderGuard.FindViolations();
             Log(violations.Count == 0
@@ -107,99 +111,147 @@ namespace StickmanJumper.EditorTools
                 case 0: // main menu, stage and level select (the game starts in the menu, like the original)
                     if (Wait(1.2)) { Snap("00_main_menu"); Next(); }
                     break;
-                case 1:
+                case 1: // menu tour: settings, «are you sure?», map builder stub, English
+                    if (MenuTour(g)) _phase = 9;
+                    break;
+                case 9:
                     g.ShowStageSelect();
                     Next();
                     break;
-                case 2:
+                case 10:
                     if (Wait(0.6)) { Snap("01_stage_select"); Next(); }
                     break;
-                case 3:
+                case 11:
                     g.ShowLevelSelect(0);
                     Next();
                     break;
-                case 4:
+                case 12:
                     if (Wait(0.6)) { Snap("02_level_select"); Next(); }
                     break;
-                case 5:
+                case 13:
                     g.StartLevel(0, 0);
                     Next();
                     break;
-                case 6: // overview before the first tap
+                case 14: // overview before the first tap
                     if (Wait(1.2)) { Snap("03_ready_overview"); g.Autopilot = new Autopilot(); Next(); }
                     break;
-                case 7: // run A: autopilot plans run-up + canopy height and should land on the flag
+                case 15: // run A: autopilot plans run-up + canopy height and should land on the flag
+                    if (s.Phase == JumpPhase.Airborne && !s.CanopyDeployed) _peak = Mathf.Max(_peak, s.Feet.y - s.Level.RoofY);
                     ShotWhen(s.Phase == JumpPhase.BackingUp && s.Level.EdgeX - s.Feet.x > 2.2f, "04_walk_back_facing_away");
                     ShotWhen(s.Phase == JumpPhase.Running && s.Velocity.x > 5f, "05_running");
                     ShotWhen(s.Phase == JumpPhase.Airborne && s.Velocity.y > 0f && s.Feet.x > s.Level.EdgeX + 0.6f, "06_takeoff");
                     ShotWhen(s.Phase == JumpPhase.Airborne && !s.CanopyDeployed && s.Velocity.y < -14f, "07_freefall_guide");
                     ShotWhen(s.Phase == JumpPhase.Airborne && s.Canopy >= 1f && s.Feet.y < s.Level.TargetRect.yMax + 8f, "08_canopy");
                     ShotWhenDelayed(s.Phase == JumpPhase.Landed, "09_landed", 0.9);
-                    if (g.UI.SummaryVisible) { Report("run A autopilot     ", g, JumpOutcome.WellDone); Next(); }
+                    if (g.UI.SummaryVisible)
+                    {
+                        Report("run A autopilot     ", g, JumpOutcome.WellDone);
+                        Log(string.Format(CultureInfo.InvariantCulture, "jump peak above the roof: {0:0.00} m", _peak));
+                        Next();
+                    }
                     break;
-                case 8:
+                case 16:
                     if (Wait(0.8)) { Snap("10_summary_welldone"); Next(); }
                     break;
-                case 9:
+                case 17:
                     g.Autopilot = new Autopilot { NeverOpenCanopy = true, DesiredRunUp = 4f };
                     g.Retry();
                     Next();
                     break;
-                case 10: // run B: «Last» flag of the previous run is on the roof; no canopy → crash
+                case 18: // run B: «Last» flag of the previous run is on the roof; no canopy → crash
                     ShotWhen(s.Phase == JumpPhase.BackingUp && s.Level.EdgeX - s.Feet.x > 3f, "11_roof_markers_last_flag");
                     ShotWhenDelayed(g.Stickman.IsRagdoll, "12_crash", 0.3);
                     if (g.UI.SummaryVisible) { Report("run B no canopy     ", g, JumpOutcome.Died); Next(); }
                     break;
-                case 11:
+                case 19:
                     if (Wait(0.6)) { Snap("13_summary_died"); Next(); }
                     break;
-                case 12:
+                case 20:
                     g.Autopilot = new Autopilot { NeverJump = true, DesiredRunUp = 6f };
                     g.Retry();
                     Next();
                     break;
-                case 13: // run C: never taps jump → stumbles off the edge
+                case 21: // run C: never taps jump → stumbles off the edge
                     ShotWhenDelayed(g.Stickman.IsRagdoll, "14_stumble", 0.45);
                     if (g.UI.SummaryVisible) { Report("run C missed edge   ", g, JumpOutcome.Died); Next(); }
                     break;
-                case 14:
+                case 22:
                     g.Autopilot = null;
                     g.Retry();
                     Next();
                     break;
-                case 15: // pause bar
+                case 23: // pause bar
                     if (Wait(0.5)) { g.SetPaused(true); Next(); }
                     break;
-                case 16:
+                case 24:
                     if (Wait(0.3)) { Snap("15_pause"); g.SetPaused(false); Next(); }
                     break;
-                case 17: // level select after progress: level 1 has stars, level 2 is unlocked
+                case 25: // level select after progress: level 1 has stars, level 2 is unlocked
                     g.ShowLevelSelect(0);
                     Next();
                     break;
-                case 18:
+                case 26:
                     if (Wait(0.6)) { Snap("16_level_select_progress"); _levelShot = 0; Next(); }
                     break;
-                case 19: // every level of stage 1 from above, to review the layouts
+                case 27: // every level of stage 1 from above, to review the layouts
                     g.StartLevel(0, _levelShot);
                     Next();
                     break;
-                case 20:
+                case 28:
                     if (Wait(1.0))
                     {
                         Snap($"lvl_{_levelShot + 1:00}");
                         _levelShot++;
-                        if (_levelShot < g.Catalog.Stages[0].Levels.Length) _phase = 19;
+                        if (_levelShot < g.Catalog.Stages[0].Levels.Length) _phase = 27;
                         else Next();
                     }
                     break;
-                case 21:
+                case 29:
                     Finish();
                     break;
             }
         }
 
-        static int _levelShot;
+        static int _levelShot, _tourStep;
+
+        /// <summary>Шаг тура по меню: действие, пауза, снимок. Действие следующего шага — только после снимка.</summary>
+        static readonly (string shot, System.Action<GameRoot> act)[] Tour =
+        {
+            ("00b_settings", g => g.ShowSettings()),
+            ("00c_reset_are_you_sure", g => g.AskResetProgress()),
+            ("00d_map_builder_stub", g =>
+            {
+                g.UI.DialogBack(); // = «cancel»
+                if (g.UI.DialogVisible) Fail("«cancel» did not close the reset dialog");
+                g.ShowMainMenu();
+                g.ShowBuilderStub();
+            }),
+            ("00e_menu_english", g => { g.UI.DialogBack(); g.SetLanguage(Language.En); g.ShowMainMenu(); }),
+            ("00f_settings_english", g => g.ShowSettings()),
+        };
+
+        static bool MenuTour(GameRoot g)
+        {
+            int step = _tourStep / 2;
+            if (step >= Tour.Length)
+            {
+                g.SetLanguage(Language.Ru);
+                g.ShowMainMenu();
+                return true;
+            }
+            if (_tourStep % 2 == 0)
+            {
+                Tour[step].act(g);
+                _tourStep++;
+                _phaseTime = EditorApplication.timeSinceStartup;
+            }
+            else if (Wait(0.5))
+            {
+                Snap(Tour[step].shot);
+                _tourStep++;
+            }
+            return false;
+        }
 
         static readonly Dictionary<string, double> Armed = new Dictionary<string, double>();
 
@@ -218,6 +270,12 @@ namespace StickmanJumper.EditorTools
             double now = EditorApplication.timeSinceStartup;
             if (!Armed.TryGetValue(name, out var since)) Armed[name] = since = now;
             if (now - since >= delay) ShotWhen(true, name);
+        }
+
+        static void Fail(string message)
+        {
+            _failures++;
+            Log("FAIL: " + message);
         }
 
         static void Report(string label, GameRoot g, JumpOutcome? expected)

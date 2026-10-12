@@ -7,7 +7,8 @@ namespace StickmanJumper.Audio
 {
     /// <summary>
     /// Звуки: музыка, вой ветра (по силе ветра уровня), свист воздуха (по скорости), шаги (пока бежит),
-    /// разовые: прыжок, хлопок купола, посадка, крики, хруст костей.
+    /// разовые: прыжок, хлопок купола, посадка, крик, хруст костей.
+    /// Кричит только от боли — в момент удара (разбился или первый сильный удар после срыва с края), не в полёте.
     /// </summary>
     public sealed class AudioService
     {
@@ -69,13 +70,6 @@ namespace StickmanJumper.Audio
             bool walking = s.Phase == JumpPhase.BackingUp || s.Phase == JumpPhase.Running;
             Ensure(_steps, walking ? 0.7f * fx : 0f, dt * 4f);
             _steps.pitch = s.Phase == JumpPhase.Running ? Mathf.Lerp(1f, 1.8f, Mathf.Clamp01(s.Velocity.x / 9f)) : 0.8f;
-
-            // Panic yell: falling fast with no canopy.
-            if (!_yelled && s.Phase == JumpPhase.Airborne && !s.CanopyDeployed && s.Velocity.y < -22f)
-            {
-                _yelled = true;
-                PlayRandom(_bank.Yells, 0.9f);
-            }
         }
 
         static void Ensure(AudioSource src, float volume, float dt)
@@ -93,10 +87,6 @@ namespace StickmanJumper.Audio
                 case JumpEvent.Jumped:
                     Play(_bank.Jump, 0.9f);
                     break;
-                case JumpEvent.Stumbled:
-                    _yelled = true;
-                    PlayRandom(_bank.Yells, 1f);
-                    break;
                 case JumpEvent.CanopyDeployed:
                     Play(_bank.CanopyOpen, 1f);
                     break;
@@ -106,16 +96,29 @@ namespace StickmanJumper.Audio
                     break;
                 case JumpEvent.Crashed:
                     PlayRandom(_bank.Smash, 1f);
+                    Yell();
                     break;
             }
         }
 
-        /// <summary>Удар части ragdoll — хруст, не чаще раза в 0.12 с.</summary>
+        /// <summary>Удар части ragdoll — хруст, не чаще раза в 0.12 с. Первый сильный удар — ещё и крик.</summary>
         public void OnRagdollImpact(float speed)
         {
+            if (speed >= YellImpactSpeed) Yell();
             if (speed < 4f || Time.unscaledTime - _lastBones < 0.12f) return;
             _lastBones = Time.unscaledTime;
             PlayRandom(_bank.Bones, Mathf.Clamp01(speed / 18f));
+        }
+
+        /// <summary>С какой скорости удар ragdoll о землю/стену вызывает крик, м/с.</summary>
+        const float YellImpactSpeed = 6f;
+
+        /// <summary>Один крик за попытку.</summary>
+        void Yell()
+        {
+            if (_yelled) return;
+            _yelled = true;
+            PlayRandom(_bank.Yells, 1f);
         }
 
         public void Click() => Play(_bank.Click, 0.7f);

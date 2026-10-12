@@ -21,8 +21,8 @@ namespace StickmanJumper.Config
         public float RunMaxSpeed = 10f;
 
         [Header("Тап 3 — прыжок")]
-        [Tooltip("Скорость толчка вверх, м/с. Горизонтальная скорость берётся из разбега.")]
-        public float JumpUpSpeed = 5.2f;
+        [Tooltip("Скорость толчка вверх, м/с (7.5 ≈ подлёт на 2.9 м, полтора роста). Горизонтальная скорость берётся из разбега.")]
+        public float JumpUpSpeed = 7.5f;
         [Tooltip("Проспал край: насколько ступни могут выйти за край, прежде чем он сорвётся, м.")]
         public float EdgeOverrun = 0.15f;
     }

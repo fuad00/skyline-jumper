@@ -13,7 +13,7 @@ using UnityEngine.UIElements;
 namespace StickmanJumper
 {
     /// <summary>
-    /// Точка сборки сцены и переходы между экранами, как в оригинале: главное меню → выбор этапа → выбор уровня →
+    /// Точка сборки сцены и переходы между экранами, как в оригинале: главное меню (настройки) → выбор этапа → выбор уровня →
     /// прыжок (пауза) → итог → ещё раз / дальше / в меню. Правила прыжка живут в JumpSession, здесь только склейка.
     /// Синглтонов нет. Клавиатура в редакторе: Пробел — тап, Z — зум, R — ещё раз, Esc/P — пауза (в меню — назад).
     /// </summary>
@@ -82,6 +82,7 @@ namespace StickmanJumper
 
             _save = new SaveService(new PlayerPrefsSaveStore());
             _save.Load();
+            UIText.Lang = UIText.FromCode(_save.Data.Language); // static: survives Play mode without a domain reload
             _cameraRig = new CameraRig2D(_camera, _cameraConfig);
             _audio = new AudioService(_camera.gameObject, _sounds);
             _audio.SetSound(_save.Data.Sound);
@@ -90,6 +91,10 @@ namespace StickmanJumper
             _ui = new GameUI(GetComponent<UIDocument>().rootVisualElement, _art);
             _ui.Tapped += () => _tapQueued = true;
             _ui.PlayClicked += () => { _audio.Click(); ShowStageSelect(); };
+            _ui.SettingsClicked += () => { _audio.Click(); ShowSettings(); };
+            _ui.BuilderClicked += () => { _audio.Click(); ShowBuilderStub(); };
+            _ui.LanguageClicked += () => { _audio.Click(); SetLanguage(UIText.Lang == Language.Ru ? Language.En : Language.Ru); };
+            _ui.ResetClicked += () => { _audio.Click(); AskResetProgress(); };
             _ui.SoundClicked += () => { _save.Data.Sound = !_save.Data.Sound; _audio.SetSound(_save.Data.Sound); _save.Persist(); _audio.Click(); RefreshSoundButtons(); };
             _ui.MusicClicked += () => { _save.Data.Music = !_save.Data.Music; _audio.SetMusic(_save.Data.Music); _save.Persist(); _audio.Click(); RefreshSoundButtons(); };
             _ui.StageClicked += i => { _audio.Click(); ShowLevelSelect(i); };
@@ -119,6 +124,45 @@ namespace StickmanJumper
         {
             EnterMenu();
             _ui.Show(UIScreen.MainMenu);
+        }
+
+        /// <summary>Настройки, как Options в оригинале: та же нижняя панель, другие кнопки (звук, музыка, язык, сброс).</summary>
+        public void ShowSettings()
+        {
+            EnterMenu();
+            _ui.Show(UIScreen.Settings);
+        }
+
+        /// <summary>Сменить язык и сразу переписать все подписи (выбор хранится в сохранении).</summary>
+        public void SetLanguage(Language lang)
+        {
+            UIText.Lang = lang;
+            _save.Data.Language = UIText.Code(lang);
+            _save.Persist();
+            _ui.ApplyLanguage();
+        }
+
+        /// <summary>«Сбросить прогресс» → «Вы уверены?» → да: звёзды и рекорды стёрты.</summary>
+        public void AskResetProgress()
+        {
+            _ui.ShowDialog(UIText.SureTitle, UIText.ResetText,
+                new DialogButton(UIText.NoSmall, UIText.NoBig, SlantButton.Blue, () => { _audio.Click(); _ui.HideDialog(); }),
+                new DialogButton(UIText.YesSmall, UIText.YesBig, SlantButton.Red, () => { _audio.Click(); ResetProgress(); _ui.HideDialog(); }));
+        }
+
+        void ResetProgress()
+        {
+            _save.ResetProgress();
+            _save.Persist();
+            _session.ForgetHistory(); // no «Last» flag from before the reset
+            _levelView.SetLastRunFlag(float.NaN);
+        }
+
+        /// <summary>Конструктор карт — пока пустышка: только сообщение «скоро».</summary>
+        public void ShowBuilderStub()
+        {
+            _ui.ShowDialog(UIText.BuilderTitle, UIText.BuilderText,
+                new DialogButton(null, UIText.OkBig, SlantButton.Blue, () => { _audio.Click(); _ui.HideDialog(); }));
         }
 
         public void ShowStageSelect()
@@ -164,8 +208,8 @@ namespace StickmanJumper
             return new StageCardView
             {
                 Number = stage.Number,
-                Title = stage.Title,
-                Subtitle = stage.Subtitle,
+                Title = UIText.Pick(stage.Title, stage.TitleEn),
+                Subtitle = UIText.Pick(stage.Subtitle, stage.SubtitleEn),
                 Stars = _save.TotalStars(ids),
                 MaxStars = ids.Count * 3,
                 NeedStars = Mathf.Max(0, stage.StarsToUnlock - before),
@@ -176,12 +220,14 @@ namespace StickmanJumper
 
         void Back()
         {
-            if (_ui.Screen == UIScreen.LevelSelect) ShowStageSelect();
+            if (_ui.DialogVisible) _ui.DialogBack();
+            else if (_ui.Screen == UIScreen.LevelSelect) ShowStageSelect();
             else ShowMainMenu();
         }
 
         void EnterMenu()
         {
+            _ui.HideDialog();
             _playing = false;
             SetPaused(false);
             Autopilot = null;
@@ -307,7 +353,8 @@ namespace StickmanJumper
             bool esc = kb.escapeKey.wasPressedThisFrame || kb.pKey.wasPressedThisFrame;
             if (!_playing)
             {
-                if (kb.escapeKey.wasPressedThisFrame && _ui.Screen != UIScreen.MainMenu) Back();
+                // Esc / the phone's back button: close the dialog, or go one screen back.
+                if (kb.escapeKey.wasPressedThisFrame && (_ui.DialogVisible || _ui.Screen != UIScreen.MainMenu)) Back();
                 return;
             }
             if (esc && !_ui.SummaryVisible) SetPaused(!Paused);

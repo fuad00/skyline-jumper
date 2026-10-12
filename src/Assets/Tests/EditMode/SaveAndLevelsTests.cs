@@ -71,6 +71,60 @@ namespace StickmanJumper.Tests
             Assert.IsTrue(save.IsUnlocked(ids, 1));
             Assert.IsFalse(save.IsUnlocked(ids, 2));
         }
+
+        [Test]
+        public void ResetProgress_WipesStarsButKeepsSettings()
+        {
+            var store = new MemoryStore();
+            var save = new SaveService(store);
+            save.Record("s1_01", 3, 1300, 0.05f);
+            save.Data.Sound = false;
+            save.Data.Language = "en";
+            save.ResetProgress();
+            save.Persist();
+            var again = new SaveService(store);
+            again.Load();
+            Assert.AreEqual(0, again.Stars("s1_01"));
+            Assert.IsNull(again.Get("s1_01"));
+            Assert.IsFalse(again.Data.Sound);
+            Assert.AreEqual("en", again.Data.Language);
+        }
+
+        [Test]
+        public void OldSave_WithoutLanguage_StaysRussian()
+        {
+            var data = SaveService.Parse("{\"Version\":1,\"Levels\":[],\"Sound\":true,\"Music\":true}");
+            Assert.AreEqual(UI.Language.Ru, UI.UIText.FromCode(data.Language));
+        }
+    }
+
+    public class UITextTests
+    {
+        [TearDown]
+        public void BackToRussian() => UI.UIText.Lang = UI.Language.Ru; // static: do not leak into other tests
+
+        [Test]
+        public void Language_SwitchesTextsAndNumberFormat()
+        {
+            UI.UIText.Lang = UI.Language.Ru;
+            Assert.AreEqual("ПРЫЖОК", UI.UIText.PlayBig);
+            Assert.AreEqual("0,42 м", UI.UIText.Meters(0.42f));
+            Assert.AreEqual("ещё 2 звезды\nчтобы открыть", UI.UIText.StarsNeeded(2));
+            UI.UIText.Lang = UI.Language.En;
+            Assert.AreEqual("JUMP", UI.UIText.PlayBig);
+            Assert.AreEqual("0.42 m", UI.UIText.Meters(0.42f));
+            Assert.AreEqual("8.54", UI.UIText.Timer(8.54f));
+            Assert.AreEqual("1 more star\nto unlock", UI.UIText.StarsNeeded(1));
+            Assert.AreEqual(("well", "DONE"), UI.UIText.Title(JumpOutcome.WellDone));
+        }
+
+        [Test]
+        public void Pick_FallsBackToRussian_WhenNoEnglish()
+        {
+            UI.UIText.Lang = UI.Language.En;
+            Assert.AreEqual("rookie", UI.UIText.Pick("новичок", "rookie"));
+            Assert.AreEqual("новичок", UI.UIText.Pick("новичок", ""));
+        }
     }
 
     public class LevelCatalogTests

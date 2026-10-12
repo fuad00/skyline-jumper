@@ -24,6 +24,8 @@ namespace StickmanJumper.Save
         public List<LevelRecord> Levels = new List<LevelRecord>();
         public bool Sound = true;
         public bool Music = true;
+        /// <summary>Язык интерфейса: «ru» или «en». Пусто — ещё не выбирал (русский).</summary>
+        public string Language = string.Empty;
     }
 
     /// <summary>Где лежит сохранение (PlayerPrefs в игре, память в тестах).</summary>
@@ -113,6 +115,9 @@ namespace StickmanJumper.Save
             if (newBest) r.BestDistance = distance;
             return newBest;
         }
+
+        /// <summary>Кнопка «сбросить прогресс»: стираем звёзды и рекорды, настройки (звук, музыка, язык) оставляем.</summary>
+        public void ResetProgress() => Data.Levels.Clear();
 
         /// <summary>Уровень открыт, если он первый или предыдущий пройден хотя бы на одну звезду.</summary>
         public bool IsUnlocked(IReadOnlyList<string> levelIds, int index) => index <= 0 || Stars(levelIds[index - 1]) > 0;

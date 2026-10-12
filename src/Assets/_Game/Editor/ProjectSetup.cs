@@ -124,6 +124,8 @@ namespace StickmanJumper.EditorTools
             stage1.Number = 1;
             stage1.Title = "новичок";
             stage1.Subtitle = "первые прыжки";
+            stage1.TitleEn = "rookie";
+            stage1.SubtitleEn = "first jumps";
             stage1.StarsToUnlock = 0;
             stage1.Levels = levels;
             EditorUtility.SetDirty(stage1);
@@ -133,6 +135,8 @@ namespace StickmanJumper.EditorTools
             stage2.Number = 2;
             stage2.Title = "опытный";
             stage2.Subtitle = "тут ветрено";
+            stage2.TitleEn = "advanced";
+            stage2.SubtitleEn = "it gets windy";
             stage2.StarsToUnlock = 20;
             EditorUtility.SetDirty(stage2);
 
