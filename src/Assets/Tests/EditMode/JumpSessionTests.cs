@@ -214,6 +214,56 @@ namespace StickmanJumper.Tests
             Object.DestroyImmediate(scene);
         }
 
+        /// <summary>
+        /// Платформа-цель оригинала — коробка, стоящая НА крыше: садимся на саму крышу, флажок там же, а не на верх коробки.
+        /// </summary>
+        [Test]
+        public void TargetPlatform_LandOnTheRoofUnderTheBox()
+        {
+            var scene = ScriptableObject.CreateInstance<LevelScene>();
+            scene.Size = new Vector2(120f, 60f);
+            scene.Solids = new[] { new Rect(0f, 0f, 10f, 40f), new Rect(12f, 0f, 98f, 30f) };
+            scene.Runway = new Rect(0f, 40f, 10f, 1.1f);
+            scene.Platform = new Rect(12f, 30f, 98f, 0.7f); // a box 0.7 m tall standing on the 30 m roof
+            var level = TestKit.Level(wind: 0f);
+            level.Scene = scene;
+            var s = TestKit.Session(level);
+            Assert.AreEqual(30f, s.Level.TargetY, 1e-4f);
+
+            TestKit.RunToEnd(s, new Autopilot { DesiredRunUp = 4f, OpenRightAway = true });
+            Assert.AreEqual(JumpOutcome.WellDone, s.Outcome, $"ended at {s.Feet}");
+            Assert.AreEqual(30f, s.Feet.y, 1e-3f, "feet on the roof, not on top of the box");
+            Object.DestroyImmediate(scene);
+        }
+
+        /// <summary>Крыша под промежуточной платформой чуть выше низа её коробки: сел на крышу — значит, сел на платформу.</summary>
+        [Test]
+        public void IntermediatePlatform_RoofSlightlyAboveTheBox_Counts()
+        {
+            var scene = ScriptableObject.CreateInstance<LevelScene>();
+            scene.Size = new Vector2(120f, 60f);
+            scene.Solids = new[] { new Rect(0f, 0f, 10f, 40f), new Rect(12f, 0f, 68f, 30.4f) };
+            scene.Runway = new Rect(0f, 40f, 10f, 1.1f);
+            scene.InterPlatforms = new[] { new Rect(12f, 30f, 68f, 1.1f) }; // the roof is 0.4 m above the bottom of the box
+            scene.InterLeft = new[] { true };
+            scene.Platform = new Rect(100f, 0f, 10f, 0.5f);
+            var level = TestKit.Level(wind: 0f);
+            level.Scene = scene;
+            level.TimeLimit = 60f;
+            var s = TestKit.Session(level);
+
+            var pilot = new Autopilot { DesiredRunUp = 4f, OpenRightAway = true };
+            for (int i = 0; i < 20000 && s.RunwayIndex == 0 && !s.Phase.IsFinished(); i++)
+            {
+                pilot.Update(s);
+                s.Step(s.StepSize);
+            }
+            Assert.AreEqual(1, s.RunwayIndex, $"ended {s.Outcome} at {s.Feet}");
+            Assert.AreEqual(30.4f, s.Feet.y, 1e-3f);
+            Assert.AreEqual(0f, s.Level.TargetY, 1e-4f, "a platform on the street stands on the street");
+            Object.DestroyImmediate(scene);
+        }
+
         [Test]
         public void WaitingTooLong_IsTimesUp()
         {

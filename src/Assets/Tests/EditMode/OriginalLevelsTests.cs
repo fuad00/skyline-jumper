@@ -98,7 +98,7 @@ namespace StickmanJumper.Tests
         {
             miss = float.NaN;
             float run = layout.EdgeX - layout.BackLimitX;
-            float drop = layout.RoofY - layout.TargetRect.yMax;
+            float drop = layout.RoofY - layout.TargetY;
             var plan = Autopilot.Plan(new JumpSession(layout, jump, flight), Mathf.Max(1f, run / 6f), Mathf.Max(3f, drop / 18f));
             if (!plan.Found) return false;
             var s = new JumpSession(layout, jump, flight);
@@ -195,12 +195,12 @@ namespace StickmanJumper.Tests
                 var layout = LevelLayout.Build(level, jump);
                 float run = layout.EdgeX - layout.BackLimitX;
                 sb.AppendLine(string.Format(ci, "{0}: roof {1:0} target {2:0}..{3:0} (top {4:0}) edge {5:0} time {6:0} wind {7:0.0} solids {8}",
-                    level.Id, layout.RoofY, layout.TargetRect.xMin, layout.TargetRect.xMax, layout.TargetRect.yMax, layout.EdgeX, level.TimeLimit, level.Wind, layout.Solids.Count));
+                    level.Id, layout.RoofY, layout.TargetRect.xMin, layout.TargetRect.xMax, layout.TargetY, layout.EdgeX, level.TimeLimit, level.Wind, layout.Solids.Count));
                 sb.Append("open\\run ");
                 var runs = new List<float>();
                 for (float r = 0.5f; r <= run + 0.01f; r += Mathf.Max(1f, run / 10f)) { runs.Add(r); sb.Append(string.Format(ci, "{0,5:0}", r)); }
                 sb.AppendLine();
-                for (float openY = layout.RoofY - 2f; openY >= layout.TargetRect.yMax + 4f; openY -= Mathf.Max(3f, (layout.RoofY - layout.TargetRect.yMax) / 20f))
+                for (float openY = layout.RoofY - 2f; openY >= layout.TargetY + 4f; openY -= Mathf.Max(3f, (layout.RoofY - layout.TargetY) / 20f))
                 {
                     sb.Append(string.Format(ci, "{0,9:0} ", openY));
                     foreach (float r in runs)
@@ -237,7 +237,7 @@ namespace StickmanJumper.Tests
                 total++;
                 var layout = LevelLayout.Build(level, jump);
                 float run = layout.EdgeX - layout.BackLimitX;
-                float drop = layout.RoofY - layout.TargetRect.yMax;
+                float drop = layout.RoofY - layout.TargetY;
                 float dx = layout.ArrowX - layout.EdgeX;
                 var template = new JumpSession(layout, jump, flight);
                 var plan = Autopilot.Plan(template, Mathf.Max(1f, run / 6f), Mathf.Max(3f, drop / 18f));
@@ -255,7 +255,7 @@ namespace StickmanJumper.Tests
                 {
                     // How far does the longest jump get? Full run-up, canopy as low as possible.
                     var s = new JumpSession(layout, jump, flight);
-                    TestKit.RunToEnd(s, new Autopilot { DesiredRunUp = run, OpenAtY = layout.TargetRect.yMax + 6f }, 120f);
+                    TestKit.RunToEnd(s, new Autopilot { DesiredRunUp = run, OpenAtY = layout.TargetY + 6f }, 120f);
                     result = string.Format(ci, "NO  longest jump: {0} at x−edge {1:0.0} m ({2:0.0} s)", s.Outcome, s.Feet.x - layout.EdgeX, s.Elapsed);
                 }
                 sb.AppendLine(string.Format(ci, "{0,-13} {1,5:0} {2,5:0} {3,5:0} {4,5:0} {5,5:0} {6,4:0.0} {7,5} | {8}",

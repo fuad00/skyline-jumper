@@ -632,11 +632,11 @@ namespace StickmanJumper.UI
                 p.ClosePath();
                 p.Fill();
             }
-            Dot(p, Map(new Vector2(_mapLayout.ArrowX, _mapLayout.TargetRect.yMax + 1.5f)), 7f, MapTarget);
+            Dot(p, Map(new Vector2(_mapLayout.ArrowX, _mapLayout.TargetY + 1.5f)), 7f, MapTarget);
             for (int i = 1; i < _mapLayout.Runways.Count; i++) // intermediate platforms
             {
-                var strip = _mapLayout.Runways[i].Strip;
-                Dot(p, Map(new Vector2(strip.center.x, strip.yMin + 1.5f)), 5f, MapPlatform);
+                var runway = _mapLayout.Runways[i];
+                Dot(p, Map(new Vector2(runway.Strip.center.x, runway.RoofY + 1.5f)), 5f, MapPlatform);
             }
             if (!float.IsNaN(_mapLastX)) Dot(p, Map(new Vector2(_mapLastX, _mapLayout.RoofY + 1f)), 6f, MapLast);
             Dot(p, Map(_mapPlayer + Vector2.up), 9f, Color.white);

@@ -229,7 +229,7 @@ namespace StickmanJumper.Presentation
             if (_art.FogBand != null)
             {
                 // A target on the street (common in the original's levels) must stay visible: keep the fog low there.
-                bool streetTarget = _layout.TargetRect.yMax < 3f;
+                bool streetTarget = _layout.TargetY < 3f;
                 var band = _kit.Make("Band", layer, _art.FogBand, SortOrder.Fog, new Color(0.96f, 0.96f, 0.94f, streetTarget ? 0.7f : 0.9f));
                 Vector2 size = _art.FogBand.bounds.size;
                 band.transform.localScale = new Vector3((x1 - x0) / size.x, (streetTarget ? 3.5f : 9f) / size.y, 1f);
@@ -416,22 +416,22 @@ namespace StickmanJumper.Presentation
 
         void BuildTarget()
         {
-            var t = _layout.TargetRect;
+            float y = _layout.TargetY; // the roof under the platform, where he lands
             var target = new GameObject("Target").transform;
             target.SetParent(_root, false);
-            _flagTopY = t.yMax + FlagHeight;
+            _flagTopY = y + FlagHeight;
             if (_art.Flag != null)
             {
                 var f = _kit.Make("Flag", target, _art.Flag, SortOrder.Target);
                 float s = FlagHeight / Mathf.Max(0.01f, _art.Flag.bounds.size.y);
                 f.transform.localScale = new Vector3(s, s, 1f);
                 // Flag sprites are imported with the pivot at the foot of the pole.
-                f.transform.localPosition = new Vector3(_layout.ArrowX, t.yMax, 0f);
+                f.transform.localPosition = new Vector3(_layout.ArrowX, y, 0f);
             }
             else
             {
-                _kit.Box("Pole", target, new Rect(_layout.ArrowX - 0.05f, t.yMax, 0.1f, FlagHeight), new Color(0.3f, 0.3f, 0.3f), SortOrder.Target);
-                _kit.Box("Cloth", target, new Rect(_layout.ArrowX, t.yMax + FlagHeight - 0.8f, 1.1f, 0.8f), TargetRed, SortOrder.Target);
+                _kit.Box("Pole", target, new Rect(_layout.ArrowX - 0.05f, y, 0.1f, FlagHeight), new Color(0.3f, 0.3f, 0.3f), SortOrder.Target);
+                _kit.Box("Cloth", target, new Rect(_layout.ArrowX, y + FlagHeight - 0.8f, 1.1f, 0.8f), TargetRed, SortOrder.Target);
             }
             if (_art.Dash != null)
             {
@@ -456,7 +456,7 @@ namespace StickmanJumper.Presentation
                     f.transform.localScale = new Vector3(s, s, 1f);
                 }
                 else f = _kit.Box($"PlatformFlag {i}", _root, new Rect(-0.05f, 0f, 0.1f, FlagHeight * 0.8f), TargetRed, SortOrder.Target);
-                f.transform.localPosition = new Vector3(strip.center.x, strip.yMin, 0f);
+                f.transform.localPosition = new Vector3(strip.center.x, _layout.Runways[i].RoofY, 0f);
                 _platformFlags[i] = f;
             }
         }

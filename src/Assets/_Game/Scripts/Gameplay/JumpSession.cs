@@ -266,15 +266,17 @@ namespace StickmanJumper.Gameplay
             ContactNormal = hit.Normal;
             // With the canopy cut away he tumbles (ragdoll already): whatever he hits now, it is a crash.
             var contact = CanopyCut ? ContactResult.Crash : LandingJudge.Judge(hit.Normal, Velocity, _flight, CanopyDeployed);
+            // Which platform he is on is decided by where his feet are (the roof under a platform may be a different solid).
+            int platform = contact == ContactResult.Landed ? _level.PlatformAt(Feet) : -1;
             switch (contact)
             {
-                case ContactResult.Landed when _level.Solids[hit.Index].Runway > 0:
-                    ReachPlatform(_level.Solids[hit.Index].Runway);
+                case ContactResult.Landed when platform > 0:
+                    ReachPlatform(platform);
                     break;
                 case ContactResult.Landed:
                     ImpactVelocity = Velocity;
                     Velocity = Vector2.zero;
-                    LandedOnTarget = _level.Solids[hit.Index].IsTarget;
+                    LandedOnTarget = _level.OnTarget(Feet);
                     LandingDistance = _level.DistanceToArrow(Feet.x);
                     Phase = JumpPhase.Landed;
                     Outcome = LandedOnTarget ? JumpOutcome.WellDone : JumpOutcome.MissedPlatform;

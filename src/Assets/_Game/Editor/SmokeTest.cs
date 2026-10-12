@@ -32,6 +32,7 @@ namespace StickmanJumper.EditorTools
         static int _snapFrames;
         static float _closeSize;      // >0: close-up of the stickman, camera half-height in metres
         static Vector2 _closeOffset;  // close-up centre relative to the stickman's middle
+        static Vector2? _closeAt;     // close-up centre in the world (instead of the stickman)
         static float _peak;
         static RenderTexture _uiRt;
         static readonly HashSet<string> Shots = new HashSet<string>();
@@ -168,11 +169,11 @@ namespace StickmanJumper.EditorTools
                     CloseUp(s.Phase == JumpPhase.Airborne && s.Elapsed - _takeoffAt > 0.12f && s.Velocity.y > 0f, "c04_takeoff", 2f);
                     CloseUp(s.Phase == JumpPhase.Airborne && !s.CanopyDeployed && s.Velocity.y < -8f, "c05_dive", 2f);
                     CloseUp(s.Phase == JumpPhase.Airborne && s.CanopyDeployed && s.Canopy > 0.3f && s.Canopy < 0.8f, "c06_canopy_opening", 4.5f, 2.5f);
-                    CloseUp(s.Phase == JumpPhase.Airborne && s.Canopy >= 1f && s.Feet.y > s.Level.TargetRect.yMax + 4f, "c07_canopy", 4.5f, 2.5f);
+                    CloseUp(s.Phase == JumpPhase.Airborne && s.Canopy >= 1f && s.Feet.y > s.Level.TargetY + 4f, "c07_canopy", 4.5f, 2.5f);
                     if (s.Phase != JumpPhase.Airborne) _takeoffAt = s.Elapsed;
                     ShotWhen(s.Phase == JumpPhase.Airborne && s.Velocity.y > 0f && s.Feet.x > s.Level.EdgeX + 0.6f, "06_takeoff");
                     ShotWhen(s.Phase == JumpPhase.Airborne && !s.CanopyDeployed && s.Velocity.y < -14f, "07_freefall_guide");
-                    ShotWhen(s.Phase == JumpPhase.Airborne && s.Canopy >= 1f && s.Feet.y < s.Level.TargetRect.yMax + 8f, "08_canopy");
+                    ShotWhen(s.Phase == JumpPhase.Airborne && s.Canopy >= 1f && s.Feet.y < s.Level.TargetY + 8f, "08_canopy");
                     ShotWhenDelayed(s.Phase == JumpPhase.Landed, "09_landed", 0.9);
                     if (s.Phase == JumpPhase.Landed && !Armed.ContainsKey("c08")) Armed["c08"] = EditorApplication.timeSinceStartup;
                     CloseUp(s.Phase == JumpPhase.Landed && EditorApplication.timeSinceStartup - Armed["c08"] > 0.5, "c08_landed_canopy_falls", 3f, 1f);
@@ -276,7 +277,14 @@ namespace StickmanJumper.EditorTools
                 case 30:
                     if (Wait(1.0))
                     {
-                        Snap(ExtraLevels[_extraShot].shot);
+                        string shot = ExtraLevels[_extraShot].shot;
+                        Snap(shot);
+                        if (shot.StartsWith("lvx_target")) // the target flag up close: it must stand on the roof
+                        {
+                            var l = g.Session.Level;
+                            _closeSize = 4f;
+                            _closeAt = new Vector2(l.ArrowX, l.TargetY + 2f);
+                        }
                         _extraShot++;
                         _phase = 29;
                     }
@@ -291,6 +299,7 @@ namespace StickmanJumper.EditorTools
         static readonly (int stage, int level, string shot)[] ExtraLevels =
         {
             (2, 0, "lvx_expert1_platform"), (2, 3, "lvx_expert4_two_platforms"), (5, 4, "lvx_heli_x05"), (8, 0, "lvx_night_n9"),
+            (0, 6, "lvx_target_flag_on_roof"), (2, 1, "lvx_target_flag_on_roof_expert2"),
         };
         static float _takeoffAt;
 
@@ -390,6 +399,7 @@ namespace StickmanJumper.EditorTools
         static void Snap(string name)
         {
             _closeSize = 0f;
+            _closeAt = null;
             var g = Object.FindAnyObjectByType<GameRoot>();
             var panel = g.GetComponent<UIDocument>().panelSettings;
             _uiRt = new RenderTexture(SnapW, SnapH, 24, RenderTextureFormat.ARGB32);
@@ -415,7 +425,7 @@ namespace StickmanJumper.EditorTools
                 float prevSize = cam.orthographicSize;
                 if (_closeSize > 0f)
                 {
-                    var c = g.Stickman.Center + _closeOffset;
+                    var c = _closeAt ?? g.Stickman.Center + _closeOffset;
                     cam.transform.position = new Vector3(c.x, c.y, prevPos.z);
                     cam.orthographicSize = _closeSize;
                 }

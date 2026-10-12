@@ -50,7 +50,7 @@ namespace StickmanJumper.EditorTools
             run = openY = float.NaN;
             var layout = LevelLayout.Build(level, jump);
             float runway = layout.EdgeX - layout.BackLimitX;
-            float drop = layout.RoofY - layout.TargetRect.yMax;
+            float drop = layout.RoofY - layout.TargetY;
             var plan = Autopilot.Plan(new JumpSession(layout, jump, flight), Mathf.Max(0.5f, runway / 12f), Mathf.Max(2f, drop / 25f));
             if (!plan.Found) return false;
             // Replay exactly like the game does (the pilot acts before every fixed step) and keep it only if it lands on the flag.

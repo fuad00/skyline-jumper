@@ -122,7 +122,7 @@ namespace StickmanJumper.Gameplay
         {
             var level = template.Level;
             float max = level.EdgeX - level.BackLimitX;
-            float lowest = level.TargetRect.yMax + 6f;
+            float lowest = level.TargetY + 6f;
             var best = new JumpPlan(max, float.NaN, float.PositiveInfinity);
             for (float run = 0.5f; run <= max + 0.001f; run += runStep)
             for (float openY = level.RoofY - 2f; openY >= lowest; openY -= openStep)
@@ -149,7 +149,7 @@ namespace StickmanJumper.Gameplay
             var p = s.Params;
             float h = s.StepSize;
             float openRate = h / Mathf.Max(0.05f, s.Flight.CanopyOpenTime);
-            float targetY = s.Level.TargetRect.yMax;
+            float targetY = s.Level.TargetY;
             Vector2 pos = s.Feet;
             Vector2 vel = s.Velocity;
             float progress = s.CanopyProgress;
