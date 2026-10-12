@@ -141,7 +141,9 @@ namespace StickmanJumper.EditorTools
             EditorUtility.SetDirty(stage2);
 
             var catalog = EnsureAsset<GameCatalog>("GameCatalog");
-            catalog.Stages = new[] { stage1, stage2 };
+            // The original's 9 stages when they are imported (placeholders), otherwise our own levels.
+            var originals = LevelImporter.LoadStages();
+            catalog.Stages = originals.Length > 0 ? originals : new[] { stage1, stage2 };
             EditorUtility.SetDirty(catalog);
         }
 

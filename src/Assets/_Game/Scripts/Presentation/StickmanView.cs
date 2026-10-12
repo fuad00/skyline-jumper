@@ -218,6 +218,7 @@ namespace StickmanJumper.Presentation
                 case JumpPhase.Airborne:
                     // Push-off, then the whole straight body follows the flight path: first flat, then head down.
                     _rig.Play(_art.AnimJump, false);
+                    if (s.CanopyCut) _rig.SkipToEnd(); // canopy cut away: straight dive again
                     float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(_phaseTime / Mathf.Max(0.05f, _art.AnimJump.Duration)));
                     targetSpin = Mathf.Lerp(0f, DiveAngle(s.Velocity), k);
                     spinSharpness = 30f;
@@ -359,6 +360,14 @@ namespace StickmanJumper.Presentation
         }
 
         // ------------------------------------------------------------------ ragdoll
+
+        /// <summary>Тап под куполом: купол отрывается и улетает, стикмен снова в свободном падении.</summary>
+        public void CutCanopy(Vector2 velocity)
+        {
+            if (_ragdoll) return;
+            if (_rig != null) _rig.DetachCanopy(_root.parent, velocity);
+            else _canopy.Detach(velocity);
+        }
 
         /// <summary>Дальше тело падает само. velocity — скорость в момент удара/срыва.</summary>
         public void BecomeRagdoll(Vector2 velocity, int seed)

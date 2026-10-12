@@ -13,5 +13,12 @@ MonoBehaviour:
   m_Name: GameCatalog
   m_EditorClassIdentifier: StickmanJumper::StickmanJumper.Config.GameCatalog
   Stages:
-  - {fileID: 11400000, guid: 5e2145b6f061a44559d4c8d2633eae02, type: 2}
-  - {fileID: 11400000, guid: a72e4d92ea6d3457383e4c53afd8dcdf, type: 2}
+  - {fileID: 11400000, guid: 0793910e7ffc14232b71821a3450b7d1, type: 2}
+  - {fileID: 11400000, guid: d971ecf375db349b18a4b7919d8f2930, type: 2}
+  - {fileID: 11400000, guid: 423fc5724f7094ed7b99f967a54f5a22, type: 2}
+  - {fileID: 11400000, guid: 460e86d90927a4099893789a943f132c, type: 2}
+  - {fileID: 11400000, guid: 555a50a5dec9e4434836e4e9fd2e1a19, type: 2}
+  - {fileID: 11400000, guid: 86beb8830ccf14235be58f4b3a673605, type: 2}
+  - {fileID: 11400000, guid: d64416147ec5349f0b56422fe326c4ab, type: 2}
+  - {fileID: 11400000, guid: c1e8ccdd90f674069a5f325ff08e0add, type: 2}
+  - {fileID: 11400000, guid: 28bfa9ca1efdd4eb58451b905f15dab7, type: 2}

@@ -65,13 +65,20 @@ namespace StickmanJumper.Presentation
 
             BuildPaper();
             BuildSkyline();
-            BuildClouds();
             BuildStreet();
-            BuildBuilding("Start Building", level.Start);
-            BuildBuilding("Target Building", level.Target);
-            if (level.Others != null)
-                for (int i = 0; i < level.Others.Length; i++) BuildBuilding($"Building {i + 1}", level.Others[i]);
-            BuildDecor(level);
+            if (level.Scene != null)
+            {
+                BuildScene(level.Scene); // the original's level: its own buildings, cranes, trees and clouds
+            }
+            else
+            {
+                BuildClouds();
+                BuildBuilding("Start Building", level.Start);
+                BuildBuilding("Target Building", level.Target);
+                if (level.Others != null)
+                    for (int i = 0; i < level.Others.Length; i++) BuildBuilding($"Building {i + 1}", level.Others[i]);
+                BuildDecor(level);
+            }
             BuildFog();
             BuildRuler();
             BuildTarget();
@@ -202,9 +209,11 @@ namespace StickmanJumper.Presentation
             float x0 = _layout.Overview.xMin - 70f, x1 = _layout.Overview.xMax + 70f;
             if (_art.FogBand != null)
             {
-                var band = _kit.Make("Band", layer, _art.FogBand, SortOrder.Fog, new Color(0.96f, 0.96f, 0.94f, 0.9f));
+                // A target on the street (common in the original's levels) must stay visible: keep the fog low there.
+                bool streetTarget = _layout.TargetRect.yMax < 3f;
+                var band = _kit.Make("Band", layer, _art.FogBand, SortOrder.Fog, new Color(0.96f, 0.96f, 0.94f, streetTarget ? 0.7f : 0.9f));
                 Vector2 size = _art.FogBand.bounds.size;
-                band.transform.localScale = new Vector3((x1 - x0) / size.x, 9f / size.y, 1f);
+                band.transform.localScale = new Vector3((x1 - x0) / size.x, (streetTarget ? 3.5f : 9f) / size.y, 1f);
                 SpriteKit.PlaceBottomCenter(band, (x0 + x1) * 0.5f, -1.3f);
             }
             if (_art.Clouds == null || _art.Clouds.Length == 0) return;
@@ -230,6 +239,26 @@ namespace StickmanJumper.Presentation
             _kit.Box("Curb", street, Rect.MinMaxRect(x0, -0.4f, x1, 0f), Curb, SortOrder.Street + 1);
             _kit.Box("Asphalt", street, Rect.MinMaxRect(x0, -1.2f, x1, -0.4f), Asphalt, SortOrder.Street);
             _kit.Box("Underground", street, Rect.MinMaxRect(x0, -60f, x1, -1.2f), AsphaltDeep, SortOrder.Fog + 1);
+        }
+
+        /// <summary>
+        /// Уровень оригинала — картинки как в его редакторе: слой из файла, при равном слое позже записанная — выше
+        /// (небольшой сдвиг по глубине: ортокамера сортирует равные по расстоянию).
+        /// </summary>
+        void BuildScene(LevelScene scene)
+        {
+            var root = new GameObject("Scene").transform;
+            root.SetParent(_root, false);
+            var pictures = scene.Pictures;
+            for (int i = 0; i < pictures.Length; i++)
+            {
+                var p = pictures[i];
+                if (p.Sprite == null) continue;
+                var r = _kit.Make(p.Sprite.name, root, p.Sprite, SortOrder.Buildings + Mathf.Clamp(p.Layer, -5, 9), new Color(1f, 1f, 1f, p.Alpha));
+                r.transform.localPosition = new Vector3(p.Position.x, p.Position.y, -i * 0.0005f);
+                r.transform.localRotation = Quaternion.Euler(0f, 0f, p.Rotation);
+                r.transform.localScale = new Vector3(p.Scale.x, p.Scale.y, 1f);
+            }
         }
 
         void BuildBuilding(string name, BuildingSpec spec)

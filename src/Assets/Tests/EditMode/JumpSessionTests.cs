@@ -49,15 +49,27 @@ namespace StickmanJumper.Tests
         [Test]
         public void LongerRunUp_GivesFasterTakeoff()
         {
-            Assert.Greater(TakeoffSpeed(5f), TakeoffSpeed(1.5f) + 1f);
+            Assert.Greater(TakeoffSpeed(6f), TakeoffSpeed(3.2f) + 1f);
         }
 
+        /// <summary>Как в оригинале: слишком короткий разбег — скорости не хватает на прыжок, тап у края не помогает.</summary>
+        [Test]
+        public void TooShortRunUp_CannotJump()
+        {
+            Assert.IsNaN(TakeoffSpeed(1.5f));
+        }
+
+        /// <summary>Скорость по X сразу после толчка (NaN — так и не прыгнул).</summary>
         static float TakeoffSpeed(float runUp)
         {
             var s = TestKit.Session();
             var pilot = new Autopilot { DesiredRunUp = runUp };
-            while (s.Phase != JumpPhase.Airborne) { pilot.Update(s); s.Step(s.StepSize); }
-            return s.Velocity.x;
+            for (int i = 0; i < 20000 && s.Phase != JumpPhase.Airborne && !s.Phase.IsFinished(); i++)
+            {
+                pilot.Update(s);
+                s.Step(s.StepSize);
+            }
+            return s.Phase == JumpPhase.Airborne ? s.Velocity.x : float.NaN;
         }
 
         [Test]
@@ -84,7 +96,12 @@ namespace StickmanJumper.Tests
         [Test]
         public void Autopilot_LandsNearArrow_OnLevel1()
         {
-            var s = TestKit.Session();
+            // The game's first level is the original's easy1 (placeholders); without it there is nothing to check here.
+            var stages = EditorTools.LevelImporter.LoadStages();
+            if (stages.Length == 0) Assert.Ignore("original levels are not imported");
+            var jump = UnityEditor.AssetDatabase.LoadAssetAtPath<JumpConfig>("Assets/_Game/Config/JumpConfig.asset");
+            var flight = UnityEditor.AssetDatabase.LoadAssetAtPath<FlightConfig>("Assets/_Game/Config/FlightConfig.asset");
+            var s = new JumpSession(LevelLayout.Build(stages[0].Levels[0], jump), jump, flight);
             TestKit.RunToEnd(s, new Autopilot());
             Assert.AreEqual(JumpOutcome.WellDone, s.Outcome, $"landed at x={s.Feet.x:0.00}, phase {s.Phase}");
             Assert.Less(s.LandingDistance, 1.5f);
@@ -98,29 +115,66 @@ namespace StickmanJumper.Tests
             level.Target = new BuildingSpec(200f, 6f, 10f, BuildingStyle.Brick); // unreachable
             level.Others = new BuildingSpec[0];
             var s = TestKit.Session(level);
-            TestKit.RunToEnd(s, new Autopilot { DesiredRunUp = 2f, OpenRightAway = true });
+            TestKit.RunToEnd(s, new Autopilot { DesiredRunUp = 4f, OpenRightAway = true }); // 4 m: fast enough to jump
             Assert.AreEqual(JumpPhase.Landed, s.Phase);
             Assert.AreEqual(JumpOutcome.MissedPlatform, s.Outcome);
         }
 
         [Test]
-        public void WindPinnedAgainstWall_SlidesDown_DoesNotHang()
+        public void CanopyDriftingIntoAWall_Crashes()
         {
-            // Regression: short run-up + instant canopy drifts into the target's wall just below its roof.
-            var s = TestKit.Session();
+            // Short run-up + instant canopy: the wind carries him into a tall wall well below its roof.
+            // Under the canopy any wall contact is a crash (it used to slide down the wall to the street).
+            var level = TestKit.Level(wind: 3f);
+            level.Target = new BuildingSpec(10f, 10f, 55f, BuildingStyle.Brick);
+            var s = TestKit.Session(level);
             TestKit.RunToEnd(s, new Autopilot { DesiredRunUp = 2f, OpenRightAway = true });
-            Assert.AreNotEqual(JumpOutcome.TimesUp, s.Outcome, $"stuck at {s.Feet}");
-            Assert.IsTrue(s.Phase.IsFinished());
+            Assert.AreEqual(JumpOutcome.Died, s.Outcome, $"ended {s.Phase} at {s.Feet}");
+        }
+
+        [Test]
+        public void WallContact_SlidesInFreefall_CrashesUnderCanopy()
+        {
+            var flight = TestKit.Flight();
+            var gentle = new Vector2(1f, -2f); // brushing a wall that faces left
+            Assert.AreEqual(ContactResult.Slide, LandingJudge.Judge(Vector2.left, gentle, flight));
+            Assert.AreEqual(ContactResult.Crash, LandingJudge.Judge(Vector2.left, gentle, flight, canopy: true));
+            Assert.AreEqual(ContactResult.Landed, LandingJudge.Judge(Vector2.up, new Vector2(0f, -4f), flight, canopy: true), "floors are still landings");
+        }
+
+        [Test]
+        public void TapUnderCanopy_CutsItAway_AndHeFalls()
+        {
+            var s = TestKit.Session();
+            var pilot = new Autopilot { DesiredRunUp = 4f, OpenRightAway = true };
+            for (float t = 0f; t < 20f && !s.CanopyDeployed; t += s.StepSize)
+            {
+                pilot.Update(s);
+                s.Step(s.StepSize);
+            }
+            Assert.IsTrue(s.CanopyDeployed);
+            s.Tap();
+            Assert.IsTrue(s.CanopyDeployed, "a quick double tap does not cut the canopy it has just opened");
+            TestKit.StepFor(s, 0.5f);
+            s.Tap();
+            Assert.IsFalse(s.CanopyDeployed);
+            Assert.IsTrue(s.CanopyCut);
+            s.Tap();
+            Assert.IsFalse(s.CanopyDeployed, "there is no second canopy");
+            TestKit.RunToEnd(s);
+            Assert.AreEqual(JumpOutcome.Died, s.Outcome);
         }
 
         [Test]
         public void WaitingTooLong_IsTimesUp()
         {
             var level = TestKit.Level();
-            level.TimeLimit = 3f;
+            level.TimeLimit = 1f; // the shortest limit there is
             var s = TestKit.Session(level);
             s.Tap();
-            TestKit.StepFor(s, 4f);
+            TestKit.StepFor(s, 1.5f); // a long run-up: still on the roof when the time is up
+            s.Tap(); // the clock runs from here
+            TestKit.StepFor(s, 1.15f);
             Assert.AreEqual(JumpPhase.TimeUp, s.Phase);
             Assert.AreEqual(JumpOutcome.TimesUp, s.Outcome);
         }
@@ -145,12 +199,18 @@ namespace StickmanJumper.Tests
         }
 
         [Test]
-        public void TimerStartsOnlyWithFirstTap()
+        public void TimerStartsWithTheRun()
         {
             var s = TestKit.Session();
             TestKit.StepFor(s, 5f);
             Assert.AreEqual(0f, s.Elapsed);
             Assert.AreEqual(JumpPhase.Ready, s.Phase);
+            s.Tap(); // step back: choosing the run-up is free, like the original
+            TestKit.StepFor(s, 1f);
+            Assert.AreEqual(0f, s.Elapsed);
+            s.Tap(); // run
+            TestKit.StepFor(s, 0.5f);
+            Assert.AreEqual(0.5f, s.Elapsed, 0.02f);
         }
 
         [Test]

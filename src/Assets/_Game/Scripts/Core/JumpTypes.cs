@@ -34,6 +34,8 @@ namespace StickmanJumper.Core
         /// <summary>Проспал край и сорвался.</summary>
         Stumbled,
         CanopyDeployed,
+        /// <summary>Тап под куполом: купол оторван, дальше свободное падение.</summary>
+        CanopyCut,
         /// <summary>Скользнул по стене, не разбившись.</summary>
         Grazed,
         Landed,

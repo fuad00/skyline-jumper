@@ -97,13 +97,14 @@ namespace StickmanJumper.UI
             _ => (string.Empty, string.Empty)
         };
 
-        public static string Hint(JumpPhase phase, bool canopy) => phase switch
+        /// <param name="canopyUsed">Купол уже раскрыт или оторван — подсказка «парашют» больше не нужна.</param>
+        public static string Hint(JumpPhase phase, bool canopyUsed) => phase switch
         {
             JumpPhase.Ready => HintReady,
             JumpPhase.BackingUp => HintBackingUp,
             JumpPhase.AtBackWall => HintBackingUp,
             JumpPhase.Running => HintRunning,
-            JumpPhase.Airborne => canopy ? string.Empty : HintFreefall,
+            JumpPhase.Airborne => canopyUsed ? string.Empty : HintFreefall,
             _ => string.Empty
         };
 

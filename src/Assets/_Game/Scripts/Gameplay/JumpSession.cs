@@ -27,7 +27,7 @@ namespace StickmanJumper.Gameplay
             _level = level;
             _jump = jump;
             _flight = flight;
-            _params = new FlightParams(flight, level.Wind);
+            _params = new FlightParams(flight, level.Wind, level.MaxFallSpeed);
             _step = 1f / Mathf.Max(30, flight.StepsPerSecond);
             Reset();
         }
@@ -53,6 +53,9 @@ namespace StickmanJumper.Gameplay
         /// <summary>Сырой прогресс раскрытия 0..1 (линейно по времени).</summary>
         public float CanopyProgress { get; private set; }
         public bool CanopyDeployed { get; private set; }
+        /// <summary>Купол оторван тапом: второго нет, падает до конца.</summary>
+        public bool CanopyCut { get; private set; }
+        float _canopyTime;
         /// <summary>Длина разбега, м (насколько отошёл от края).</summary>
         public float RunUpLength { get; private set; }
         /// <summary>Откуда стартовал разбег в этой попытке (NaN — ещё не бежал).</summary>
@@ -93,6 +96,8 @@ namespace StickmanJumper.Gameplay
             Elapsed = 0f;
             CanopyProgress = 0f;
             CanopyDeployed = false;
+            CanopyCut = false;
+            _canopyTime = 0f;
             RunUpLength = 0f;
             LandingDistance = float.NaN;
             LandedOnTarget = false;
@@ -117,16 +122,26 @@ namespace StickmanJumper.Gameplay
                     Raise(JumpEvent.StartedRunning);
                     break;
                 case JumpPhase.Running:
-                    Velocity = new Vector2(Velocity.x, _jump.JumpUpSpeed);
+                    if (Velocity.x < _jump.JumpSpeedGate) break; // like the original: too slow to jump yet
+                    Velocity = new Vector2(Velocity.x * _jump.JumpHorizontalMultiplier, _jump.JumpUpSpeed);
                     TakeoffX = Feet.x;
                     Phase = JumpPhase.Airborne;
                     Raise(JumpEvent.Jumped);
                     break;
                 case JumpPhase.Airborne:
-                    if (!CanopyDeployed)
+                    if (!CanopyDeployed && !CanopyCut)
                     {
                         CanopyDeployed = true;
+                        _canopyTime = 0f;
                         Raise(JumpEvent.CanopyDeployed);
+                    }
+                    else if (CanopyDeployed && _canopyTime >= _flight.CanopyCutDelay)
+                    {
+                        // Like the original: a tap under the canopy cuts it away — a quick way to crash and retry.
+                        CanopyDeployed = false;
+                        CanopyCut = true;
+                        CanopyProgress = 0f;
+                        Raise(JumpEvent.CanopyCut);
                     }
                     break;
             }
@@ -173,6 +188,8 @@ namespace StickmanJumper.Gameplay
                     return;
             }
             if (Phase.IsFinished()) return;
+            // Like the original, the clock starts with the run: stepping back to choose the run-up is free.
+            if (Phase == JumpPhase.BackingUp || Phase == JumpPhase.AtBackWall) return;
             Elapsed += h;
             if (Elapsed >= _level.TimeLimit)
             {
@@ -214,7 +231,11 @@ namespace StickmanJumper.Gameplay
 
         void StepAir(float h)
         {
-            if (CanopyDeployed) CanopyProgress = Mathf.Min(1f, CanopyProgress + h / Mathf.Max(0.05f, _flight.CanopyOpenTime));
+            if (CanopyDeployed)
+            {
+                _canopyTime += h;
+                CanopyProgress = Mathf.Min(1f, CanopyProgress + h / Mathf.Max(0.05f, _flight.CanopyOpenTime));
+            }
             Velocity = FlightModel.Step(Velocity, Canopy, _params, h);
             Vector2 delta = Velocity * h;
 
@@ -226,7 +247,7 @@ namespace StickmanJumper.Gameplay
 
             Feet += delta * hit.T;
             ContactNormal = hit.Normal;
-            switch (LandingJudge.Judge(hit.Normal, Velocity, _flight))
+            switch (LandingJudge.Judge(hit.Normal, Velocity, _flight, CanopyDeployed))
             {
                 case ContactResult.Landed:
                     ImpactVelocity = Velocity;

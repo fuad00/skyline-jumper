@@ -116,14 +116,16 @@ namespace StickmanJumper.Gameplay
         /// Перебирает длину разбега (шаг 0.25 м) и высоту раскрытия купола и прогоняет прыжок целиком той же физикой
         /// (со столкновениями). Возвращает вариант, после которого садимся ближе всего к флажку.
         /// </summary>
-        public static JumpPlan Plan(JumpSession template)
+        /// <param name="runStep">Шаг перебора длины разбега, м.</param>
+        /// <param name="openStep">Шаг перебора высоты раскрытия, м (на высоких уровнях оригинала — крупнее).</param>
+        public static JumpPlan Plan(JumpSession template, float runStep = 0.25f, float openStep = 3f)
         {
             var level = template.Level;
             float max = level.EdgeX - level.BackLimitX;
             float lowest = level.TargetRect.yMax + 6f;
             var best = new JumpPlan(max, float.NaN, float.PositiveInfinity);
-            for (float run = 0.5f; run <= max + 0.001f; run += 0.25f)
-            for (float openY = level.RoofY - 2f; openY >= lowest; openY -= 3f)
+            for (float run = 0.5f; run <= max + 0.001f; run += runStep)
+            for (float openY = level.RoofY - 2f; openY >= lowest; openY -= openStep)
             {
                 var s = new JumpSession(level, template.Jump, template.Flight);
                 var pilot = new Autopilot { DesiredRunUp = run, OpenAtY = openY };

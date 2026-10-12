@@ -16,10 +16,12 @@ namespace StickmanJumper.Gameplay
     /// <summary>Что происходит при касании поверхности.</summary>
     public static class LandingJudge
     {
-        public static ContactResult Judge(Vector2 normal, Vector2 velocity, FlightConfig cfg)
+        /// <param name="canopy">Купол раскрыт: стропы и купол цепляются за стену — любое касание стены валит стикмена.</param>
+        public static ContactResult Judge(Vector2 normal, Vector2 velocity, FlightConfig cfg, bool canopy = false)
         {
             if (normal.y > 0.7f)
                 return velocity.magnitude <= cfg.SafeLandingSpeed ? ContactResult.Landed : ContactResult.Crash;
+            if (canopy) return ContactResult.Crash;
             float intoSurface = -Vector2.Dot(velocity, normal);
             return intoSurface > cfg.WallCrashSpeed ? ContactResult.Crash : ContactResult.Slide;
         }

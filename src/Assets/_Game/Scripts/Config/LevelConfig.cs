@@ -38,6 +38,10 @@ namespace StickmanJumper.Config
         [Tooltip("Ключ для сохранения рекорда. Не меняй после релиза.")]
         public string Id = "easy1";
 
+        [Header("Уровень оригинала (если задан — здания ниже не используются)")]
+        [Tooltip("Картинки, столкновения, разбег и цель из уровня оригинала (заглушки).")]
+        public LevelScene Scene;
+
         [Header("Здания")]
         [Tooltip("Здание, с крыши которого прыгаем. Прыгаем вправо, с его правого края.")]
         public BuildingSpec Start = new BuildingSpec(-16.3f, 16.3f, 60f, BuildingStyle.Office);
@@ -55,8 +59,10 @@ namespace StickmanJumper.Config
         public float Wind = 1.5f;
         [Tooltip("Самый сильный ветер в игре (полная полоска на панели ветра), м/с.")]
         public float WindMax = 6f;
-        [Tooltip("Лимит времени с первого тапа, сек.")]
+        [Tooltip("Лимит времени, сек. Считается с начала разбега (пока пятится — не считается), как в оригинале.")]
         public float TimeLimit = 30f;
+        [Tooltip("Своя предельная скорость падения без купола, м/с (0 — общая из FlightConfig). В оригинале так ускоряли падение на самых высоких уровнях.")]
+        public float MaxFallSpeed;
 
         [Header("Звёзды")]
         [Tooltip("2 звезды: сел не дальше этого от флажка, м.")]

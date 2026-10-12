@@ -122,6 +122,12 @@ namespace StickmanJumper.Presentation
             _skeleton.localPosition = new Vector3(0f, -PivotHeight - clip.GroundY * _mpp, 0f);
         }
 
+        /// <summary>Сразу последний кадр (оторвал купол — снова прямой, как в конце прыжка).</summary>
+        public void SkipToEnd()
+        {
+            if (_clip != null) _time = _clip.Duration;
+        }
+
         /// <param name="rate">1 — как задумано в оригинале; 2 — вдвое быстрее.</param>
         public void Advance(float dt, float rate = 1f) => _time += dt * Mathf.Max(0f, rate);
 

@@ -15,7 +15,9 @@ MonoBehaviour:
   WalkBackSpeed: 2.5
   StartDistanceFromEdge: 0.8
   BackWallMargin: 0.8
-  RunAcceleration: 5
-  RunMaxSpeed: 10
-  JumpUpSpeed: 7.5
+  RunAcceleration: 3.75
+  RunMaxSpeed: 22.7
+  JumpUpSpeed: 11.36
+  JumpHorizontalMultiplier: 2
+  JumpSpeedGate: 4.66
   EdgeOverrun: 0.15

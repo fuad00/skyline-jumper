@@ -325,8 +325,8 @@ namespace StickmanJumper
             _tapQueued = false;
             _session.Advance(dt);
 
-            if (_stickman.IsRagdoll) _stickman.UpdateDetached(dt);
-            else _stickman.UpdateAlive(_session, dt);
+            if (!_stickman.IsRagdoll) _stickman.UpdateAlive(_session, dt);
+            _stickman.UpdateDetached(dt); // a canopy that was torn or cut away keeps flying
 
             Vector2 focus = _stickman.IsRagdoll ? _stickman.Center : _session.Feet;
             if (_playing) _cameraRig.Update(focus, _session.Velocity, _session.Phase, _stickman.IsRagdoll, _layout.Overview, realDt);
@@ -339,7 +339,7 @@ namespace StickmanJumper
             {
                 _ui.SetHud(_session.TimeLeft, _layout.TimeLimit, _layout.Wind, _level.WindMax, _cameraRig.Overview);
                 _ui.SetMinimap(_layout, focus, _session.LastRunStartX);
-                _ui.SetHint(UIText.Hint(_session.Phase, _session.CanopyDeployed));
+                _ui.SetHint(UIText.Hint(_session.Phase, _session.CanopyDeployed || _session.CanopyCut));
             }
 
             UpdateSlowMo();
@@ -371,6 +371,9 @@ namespace StickmanJumper
             {
                 case JumpEvent.StartedBackingUp:
                     _cameraRig.Overview = false;
+                    break;
+                case JumpEvent.CanopyCut:
+                    _stickman.CutCanopy(_session.Velocity);
                     break;
                 case JumpEvent.Stumbled:
                 case JumpEvent.Crashed:

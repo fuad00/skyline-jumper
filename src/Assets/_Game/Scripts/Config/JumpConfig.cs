@@ -2,7 +2,10 @@ using UnityEngine;
 
 namespace StickmanJumper.Config
 {
-    /// <summary>Разбег по крыше и толчок с края (тапы 1–3 из оригинала).</summary>
+    /// <summary>
+    /// Разбег по крыше и толчок с края (тапы 1–3 из оригинала). Числа разбега и прыжка — из справки оригинала
+    /// (reference/decoded/gameplay_reference.json, px/с → м/с делением на 44 px/м).
+    /// </summary>
     [CreateAssetMenu(menuName = "Stickman Jumper/Jump Config", fileName = "JumpConfig")]
     public class JumpConfig : ScriptableObject
     {
@@ -15,14 +18,18 @@ namespace StickmanJumper.Config
         public float BackWallMargin = 0.8f;
 
         [Header("Тап 2 — разбег к краю")]
-        [Tooltip("Ускорение бега, м/с². Чем длиннее разбег, тем больше скорость у края.")]
-        public float RunAcceleration = 5f;
-        [Tooltip("Максимальная скорость бега, м/с.")]
-        public float RunMaxSpeed = 10f;
+        [Tooltip("Ускорение бега, м/с² (оригинал: 165 px/с²). Чем длиннее разбег, тем больше скорость у края.")]
+        public float RunAcceleration = 3.75f;
+        [Tooltip("Максимальная скорость бега, м/с (оригинал: 1000 px/с).")]
+        public float RunMaxSpeed = 22.7f;
 
         [Header("Тап 3 — прыжок")]
-        [Tooltip("Скорость толчка вверх, м/с (7.5 ≈ подлёт на 2.9 м, полтора роста). Горизонтальная скорость берётся из разбега.")]
-        public float JumpUpSpeed = 7.5f;
+        [Tooltip("Скорость толчка вверх, м/с (оригинал: 500 px/с).")]
+        public float JumpUpSpeed = 11.36f;
+        [Tooltip("Скорость по X при толчке = скорость бега × это (оригинал: 2) — отсюда дальние полёты.")]
+        public float JumpHorizontalMultiplier = 2f;
+        [Tooltip("Прыгнуть можно, только разогнавшись хотя бы до этого, м/с (оригинал: 205 px/с). Раньше тап не считается.")]
+        public float JumpSpeedGate = 4.66f;
         [Tooltip("Проспал край: насколько ступни могут выйти за край, прежде чем он сорвётся, м.")]
         public float EdgeOverrun = 0.15f;
     }
