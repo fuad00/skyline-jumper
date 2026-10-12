@@ -27,6 +27,8 @@ namespace StickmanJumper.Config
             public string Kind;
             [Tooltip("Ночью всегда освещена (облака оригинала).")]
             public bool AlwaysLit;
+            [Tooltip("Твёрдая (её столкновения — в Solids). Нужно, чтобы открыть уровень в редакторе карт.")]
+            public bool Solid;
         }
 
         [Serializable]

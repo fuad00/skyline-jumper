@@ -4,6 +4,7 @@ using StickmanJumper.Audio;
 using StickmanJumper.Config;
 using StickmanJumper.Core;
 using StickmanJumper.Gameplay;
+using StickmanJumper.Maps;
 using StickmanJumper.Presentation;
 using StickmanJumper.Save;
 using StickmanJumper.UI;
@@ -15,7 +16,8 @@ namespace StickmanJumper
 {
     /// <summary>
     /// Точка сборки сцены и переходы между экранами, как в оригинале: главное меню (настройки) → выбор этапа → выбор уровня →
-    /// прыжок (пауза) → итог → ещё раз / дальше / в меню. Правила прыжка живут в JumpSession, здесь только склейка.
+    /// прыжок (пауза) → итог → ещё раз / дальше / в меню. Плюс конструктор карт (<see cref="MapBuilder"/>): свои карты
+    /// играются так же, как уровни. Правила прыжка живут в JumpSession, здесь только склейка.
     /// Синглтонов нет. Клавиатура в редакторе: Пробел — тап, Z — зум, R — ещё раз, Esc/P — пауза (в меню — назад).
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
@@ -51,6 +53,15 @@ namespace StickmanJumper
         CameraRig2D _cameraRig;
         AudioService _audio;
         GameUI _ui;
+        MapBuilder _builder;
+
+        // A map from the builder being played (null — an ordinary level). From the editor: back to the editor afterwards.
+        MapData _mapPlay;
+        bool _mapFromEditor;
+        /// <summary>Этапы и уровни выбирают, чтобы сделать из уровня карту (а не сыграть его).</summary>
+        bool _pickForMap;
+        /// <summary>Уровень, созданный в памяти из карты (удалить, когда больше не нужен).</summary>
+        LevelConfig _ownedLevel;
 
         // Current level (rebuilt by LoadLevel).
         LevelConfig _level;
@@ -74,6 +85,9 @@ namespace StickmanJumper
         public GameCatalog Catalog => _catalog;
         public SaveService Save => _save;
         public int StageIndex => _stage;
+        public MapBuilder Builder => _builder;
+        /// <summary>Сейчас играется карта из конструктора.</summary>
+        public MapData PlayingMap => _mapPlay;
         public int LevelIndex => _levelIndex;
         public bool Paused { get; private set; }
 
@@ -108,22 +122,35 @@ namespace StickmanJumper
             _ui.Tapped += () => _tapQueued = true;
             _ui.PlayClicked += () => { _audio.Click(); ShowStageSelect(); };
             _ui.SettingsClicked += () => { _audio.Click(); ShowSettings(); };
-            _ui.BuilderClicked += () => { _audio.Click(); ShowBuilderStub(); };
+            _ui.BuilderClicked += () => { _audio.Click(); ShowMaps(); };
             _ui.LanguageClicked += () => { _audio.Click(); SetLanguage(UIText.Lang == Language.Ru ? Language.En : Language.Ru); };
             _ui.ResetClicked += () => { _audio.Click(); AskResetProgress(); };
             _ui.UnlockAllHeld += () => { _audio.Click(); UnlockAll(); };
             _ui.SoundClicked += () => { _save.Data.Sound = !_save.Data.Sound; _audio.SetSound(_save.Data.Sound); _save.Persist(); _audio.Click(); RefreshSoundButtons(); };
             _ui.MusicClicked += () => { _save.Data.Music = !_save.Data.Music; _audio.SetMusic(_save.Data.Music); _save.Persist(); _audio.Click(); RefreshSoundButtons(); };
             _ui.StageClicked += i => { _audio.Click(); ShowLevelSelect(i); };
-            _ui.LevelClicked += i => { _audio.Click(); StartLevel(_stage, i); };
+            _ui.LevelClicked += i => { _audio.Click(); OnLevelClicked(i); };
             _ui.BackClicked += () => { _audio.Click(); Back(); };
-            _ui.MenuClicked += () => { _audio.Click(); SetPaused(false); ShowLevelSelect(_stage); };
+            _ui.MenuClicked += () => { _audio.Click(); LeaveToMenu(); };
             _ui.RetryClicked += () => { _audio.Click(); Retry(); };
             _ui.NextClicked += () => { _audio.Click(); StartLevel(_stage, _levelIndex + 1); };
             _ui.ContinueClicked += () => { _audio.Click(); SetPaused(false); };
             _ui.PauseClicked += () => { _audio.Click(); SetPaused(true); };
             _ui.ZoomClicked += () => { _audio.Click(); _cameraRig.Overview = !_cameraRig.Overview; };
             RefreshSoundButtons();
+
+            _builder = new MapBuilder(_camera, _art, _ui, _dayBackground)
+            {
+                Play = PlayMap,
+                Exit = ShowMainMenu,
+                PickLevel = () => { _pickForMap = true; ShowStageSelect(); },
+                ListShown = () =>
+                {
+                    EnterMenu(); // the demo plays behind the list again
+                    _camera.backgroundColor = _levelView.Night ? Color.black : _dayBackground;
+                },
+                Click = () => _audio.Click(),
+            };
 
             _pilotStep = s => Autopilot?.Update(s);
             for (int s = 0; s < _catalog.Stages.Length; s++)
@@ -147,8 +174,17 @@ namespace StickmanJumper
 
         public void ShowMainMenu()
         {
+            _pickForMap = false;
+            _builder.Leave();
             EnterMenu();
             _ui.Show(UIScreen.MainMenu);
+        }
+
+        /// <summary>Конструктор карт: «Мои карты» (за списком играет заставка).</summary>
+        public void ShowMaps()
+        {
+            _pickForMap = false;
+            _builder.ShowList();
         }
 
         /// <summary>Настройки, как Options в оригинале: та же нижняя панель, другие кнопки (звук, музыка, язык, сброс).</summary>
@@ -192,15 +228,9 @@ namespace StickmanJumper
                 new DialogButton(null, UIText.OkBig, SlantButton.Green, () => { _audio.Click(); _ui.HideDialog(); }));
         }
 
-        /// <summary>Конструктор карт — пока пустышка: только сообщение «скоро».</summary>
-        public void ShowBuilderStub()
-        {
-            _ui.ShowDialog(UIText.BuilderTitle, UIText.BuilderText,
-                new DialogButton(null, UIText.OkBig, SlantButton.Blue, () => { _audio.Click(); _ui.HideDialog(); }));
-        }
-
         public void ShowStageSelect()
         {
+            _builder.Leave();
             EnterMenu();
             var cards = new List<StageCardView>();
             for (int s = 0; s < _catalog.Stages.Length; s++) cards.Add(StageCard(s));
@@ -218,10 +248,38 @@ namespace StickmanJumper
             for (int i = 0; i < ids.Count; i++)
             {
                 var rec = _save.Get(ids[i]);
-                nodes.Add(new LevelNodeView { Number = i + 1, Stars = rec?.Stars ?? 0, Points = rec?.BestPoints ?? 0, Locked = !_save.IsUnlocked(ids, i) });
+                // Picking a level to make a map of it: every level will do (it is only copied, not played).
+                nodes.Add(new LevelNodeView { Number = i + 1, Stars = rec?.Stars ?? 0, Points = rec?.BestPoints ?? 0, Locked = !_pickForMap && !_save.IsUnlocked(ids, i) });
             }
             _ui.SetLevels(StageCard(stage), nodes);
             _ui.Show(UIScreen.LevelSelect);
+        }
+
+        /// <summary>Первая кнопка паузы и итога: к уровням этапа, а с карты — в редактор или к списку карт.</summary>
+        public void LeaveToMenu()
+        {
+            SetPaused(false);
+            if (_mapPlay != null) LeaveMap();
+            else ShowLevelSelect(_stage);
+        }
+
+        /// <summary>Тап по плитке уровня (для автотеста).</summary>
+        public void ClickLevel(int index) => OnLevelClicked(index);
+
+        /// <summary>Тап по уровню: сыграть его — или, если выбирают уровень для конструктора, сделать из него карту.</summary>
+        void OnLevelClicked(int index)
+        {
+            // The level list shows _menuStage (the demo behind it may be on another stage).
+            if (_pickForMap)
+            {
+                var level = _catalog.Level(_menuStage, index);
+                if (level == null) return;
+                _pickForMap = false;
+                var stage = _catalog.Stages[_menuStage];
+                _builder.CreateFromLevel(level, $"{UIText.Pick(stage.Title, stage.TitleEn)} {index + 1}");
+                return;
+            }
+            StartLevel(_menuStage, index);
         }
 
         /// <summary>Начать уровень (экран выбора, «дальше», автотест).</summary>
@@ -233,6 +291,8 @@ namespace StickmanJumper
             Autopilot = null;
             _audio.Quiet = false;
             _menuStage = stage;
+            _builder.Leave();
+            ForgetMap();
             LoadLevel(stage, level);
             _playing = true;
             _ui.Show(UIScreen.Game);
@@ -252,7 +312,7 @@ namespace StickmanJumper
                 Stars = _save.TotalStars(ids),
                 MaxStars = ids.Count * 3,
                 NeedStars = Mathf.Max(0, stage.StarsToUnlock - before),
-                Locked = !_save.Data.UnlockAll && before < stage.StarsToUnlock,
+                Locked = !_pickForMap && !_save.Data.UnlockAll && before < stage.StarsToUnlock,
                 Empty = ids.Count == 0,
             };
         }
@@ -260,8 +320,45 @@ namespace StickmanJumper
         void Back()
         {
             if (_ui.DialogVisible) _ui.DialogBack();
+            else if (_builder.Back()) { }
             else if (_ui.Screen == UIScreen.LevelSelect) ShowStageSelect();
+            else if (_ui.Screen == UIScreen.StageSelect && _pickForMap) ShowMaps();
             else ShowMainMenu();
+        }
+
+        // ------------------------------------------------------------------ maps from the builder
+
+        /// <summary>Сыграть карту конструктора (из редактора — проверить её; после игры вернуться туда же).</summary>
+        public void PlayMap(MapData map, bool fromEditor)
+        {
+            _demo = false;
+            Autopilot = null;
+            _audio.Quiet = false;
+            _builder.Leave();
+            _mapPlay = map;
+            _mapFromEditor = fromEditor;
+            _ui.SetMenuButton(fromEditor ? () => UIText.ToEditorSmall : () => UIText.ToMapsSmall, fromEditor ? () => UIText.ToEditorBig : () => UIText.ToMapsBig);
+            LoadLevel(MapLevel.ToLevel(map, _art.Pieces), -1, -1);
+            _playing = true;
+            _ui.Show(UIScreen.Game);
+            StartRun();
+        }
+
+        /// <summary>С карты — назад в редактор (если проверяли) или к списку карт.</summary>
+        void LeaveMap()
+        {
+            bool toEditor = _mapFromEditor;
+            ForgetMap();
+            _playing = false;
+            Time.timeScale = 1f;
+            if (toEditor) _builder.Resume();
+            else ShowMaps();
+        }
+
+        void ForgetMap()
+        {
+            _mapPlay = null;
+            _ui.SetMenuButton(null, null);
         }
 
         void EnterMenu()
@@ -304,13 +401,18 @@ namespace StickmanJumper
 
         // ------------------------------------------------------------------ level & run
 
-        void LoadLevel(int stage, int level)
+        void LoadLevel(int stage, int level) => LoadLevel(_catalog.Level(stage, level), stage, level);
+
+        /// <param name="stage">Этап; −1 — карта из конструктора (её уровень создан в памяти, удалим его потом).</param>
+        void LoadLevel(LevelConfig config, int stage, int level)
         {
             if (_world != null) Destroy(_world.gameObject);
+            if (_ownedLevel != null && _ownedLevel != config) MapLevel.Destroy(_ownedLevel);
+            _ownedLevel = stage < 0 ? config : null;
             _stickman = null;
             _stage = stage;
             _levelIndex = level;
-            _level = _catalog.Level(stage, level);
+            _level = config;
             _world = new GameObject("World").transform;
             _layout = LevelLayout.Build(_level, _jumpConfig);
             if (_session != null) _session.Happened -= OnJumpEvent;
@@ -380,6 +482,11 @@ namespace StickmanJumper
             float realDt = Time.unscaledDeltaTime;
             _ui.ApplySafeArea(Screen.safeArea, Screen.width, Screen.height);
             ReadKeyboard();
+            // The map editor has the screen: the game world sleeps behind it.
+            bool editing = _builder.EditorOpen;
+            if (_world != null && _world.gameObject.activeSelf == editing) _world.gameObject.SetActive(!editing);
+            _builder.Update(realDt);
+            if (editing) return;
             if (Paused)
             {
                 _tapQueued = false;
@@ -519,9 +626,15 @@ namespace StickmanJumper
             bool newBest = _save.Record(_level.Id, score.Stars, score.Points, outcome == JumpOutcome.WellDone ? distance : float.NaN);
             _save.Persist();
             float best = _save.Get(_level.Id)?.BestDistance ?? -1f;
+            if (_mapPlay != null)
+            {
+                if (outcome == JumpOutcome.WellDone) _builder.MarkPassed(_mapPlay); // landed on the flag: the map can be shared
+                _ui.ShowSummary(outcome, UIText.MapLine(_mapPlay.Name), distance, best < 0f ? float.NaN : best, newBest, score.Points, score.Stars, false);
+                return;
+            }
             var ids = _catalog.LevelIds(_stage);
             bool canGoNext = _levelIndex + 1 < ids.Count && _save.IsUnlocked(ids, _levelIndex + 1);
-            _ui.ShowSummary(outcome, _catalog.Stages[_stage].Number, _levelIndex + 1, distance, best < 0f ? float.NaN : best, newBest, score.Points, score.Stars, canGoNext);
+            _ui.ShowSummary(outcome, UIText.LevelLine(_catalog.Stages[_stage].Number, _levelIndex + 1), distance, best < 0f ? float.NaN : best, newBest, score.Points, score.Stars, canGoNext);
         }
     }
 }

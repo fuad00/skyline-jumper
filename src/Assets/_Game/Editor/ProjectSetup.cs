@@ -256,6 +256,7 @@ namespace StickmanJumper.EditorTools
             art.AnimFastLanding = CharacterImporter.LoadClip("stuntmanFastLanding");
             art.AnimWins = CharacterImporter.LoadClip("stuntmanWins");
             art.AnimLoose = CharacterImporter.LoadClip("stuntmanLoose");
+            art.Pieces = AssetDatabase.LoadAssetAtPath<PieceCatalog>(LevelImporter.CatalogPath); // map builder pieces (placeholders)
             EditorUtility.SetDirty(art);
         }
 

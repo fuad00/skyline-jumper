@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using StickmanJumper.Config;
 using StickmanJumper.Core;
 using StickmanJumper.Gameplay;
+using StickmanJumper.Maps;
 using StickmanJumper.UI;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -22,7 +24,7 @@ namespace StickmanJumper.EditorTools
     {
         const string ActiveKey = "SJ.Smoke.Active", OutKey = "SJ.Smoke.Out", StartKey = "SJ.Smoke.Start", BackupKey = "SJ.Smoke.Backup";
         const string BackgroundKey = "SJ.Smoke.RunInBackground";
-        const double TimeoutSeconds = 240;
+        const double TimeoutSeconds = 420;
         const int SnapW = 1280, SnapH = 720;
 
         static int _phase, _errors, _failures;
@@ -72,7 +74,12 @@ namespace StickmanJumper.EditorTools
             _tourStep = 0;
             _runDStep = 0;
             _extraShot = 0;
+            _builderStep = 0;
             _peak = 0f;
+            // The map builder saves into a folder of its own here (the real maps on this computer stay untouched).
+            string maps = Path.Combine(outDir, "maps");
+            if (Directory.Exists(maps)) Directory.Delete(maps, true);
+            MapStore.FolderOverride = maps;
 
             var violations = PlaceholderGuard.FindViolations();
             Log(violations.Count == 0
@@ -270,7 +277,7 @@ namespace StickmanJumper.EditorTools
                     }
                     break;
                 case 29: // a few levels from later stages: intermediate platforms (flags, rulers), the night pack
-                    if (_extraShot >= ExtraLevels.Length || ExtraLevels[_extraShot].stage >= g.Catalog.Stages.Length) { _phase = 31; break; }
+                    if (_extraShot >= ExtraLevels.Length || ExtraLevels[_extraShot].stage >= g.Catalog.Stages.Length) { _phase = 31; _phaseTime = 0; break; }
                     g.StartLevel(ExtraLevels[_extraShot].stage, ExtraLevels[_extraShot].level);
                     Next();
                     break;
@@ -289,11 +296,196 @@ namespace StickmanJumper.EditorTools
                         _phase = 29;
                     }
                     break;
-                case 31:
+                case 31: // the map builder: a new map, fingers on the editor, palette, walls, settings
+                    if (BuilderTour(g, BuilderBefore)) _phase = 32;
+                    break;
+                case 32: // «Test»: the autopilot plays the new map from the editor and lands on the flag
+                {
+                    var b = g.Builder;
+                    var jump = AssetDatabase.LoadAssetAtPath<JumpConfig>("Assets/_Game/Config/JumpConfig.asset");
+                    var flight = AssetDatabase.LoadAssetAtPath<FlightConfig>("Assets/_Game/Config/FlightConfig.asset");
+                    var level = MapLevel.ToLevel(b.Editor.Map, b.Editor.Catalog);
+                    var plan = Autopilot.Plan(new JumpSession(LevelLayout.Build(level, jump), jump, flight), 0.5f, 2f);
+                    MapLevel.Destroy(level);
+                    if (!plan.Found)
+                    {
+                        Fail("no autopilot plan for the new map");
+                        _phase = 34;
+                        break;
+                    }
+                    b.UI.Test?.Invoke();
+                    if (g.PlayingMap == null) Fail("«Test» did not start the map");
+                    g.Autopilot = new Autopilot { DesiredRunUp = plan.RunUp, OpenAtY = plan.OpenY };
+                    Next();
+                    break;
+                }
+                case 33:
+                    if (g.UI.SummaryVisible && Wait(0.8))
+                    {
+                        Snap("m09_map_passed_summary");
+                        Report("run M map test  ", g, JumpOutcome.WellDone);
+                        if (g.PlayingMap == null || !g.PlayingMap.Verified) Fail("the passed map is not marked as passed");
+                        g.Autopilot = null;
+                        _builderStep = 0;
+                        Next();
+                    }
+                    break;
+                case 34: // back in the editor (passed), share, paste the code, «from level», night, undo
+                    if (BuilderTour(g, BuilderAfter)) Next();
+                    break;
+                case 35:
                     Finish();
                     break;
             }
         }
+
+        // ---------------------------------------------------------------- map builder tour
+
+        static int _builderStep;
+
+        /// <summary>Шаг: действие, затем (когда готово) снимок; null — без снимка.</summary>
+        static bool BuilderTour(GameRoot g, (string shot, System.Action<GameRoot> act)[] steps)
+        {
+            int step = _builderStep / 2;
+            if (step >= steps.Length)
+            {
+                _builderStep = 0;
+                return true;
+            }
+            if (_builderStep % 2 == 0)
+            {
+                steps[step].act(g);
+                _builderStep++;
+                _phaseTime = EditorApplication.timeSinceStartup;
+            }
+            else if (Wait(0.7))
+            {
+                if (steps[step].shot != null) Snap(steps[step].shot);
+                _builderStep++;
+            }
+            return false;
+        }
+
+        static Vector2 _dragFrom;
+
+        static readonly (string shot, System.Action<GameRoot> act)[] BuilderBefore =
+        {
+            ("m02_editor_new_map", g =>
+            {
+                g.ShowMaps();
+                g.Builder.NewMap();
+                if (!g.Builder.EditorOpen) Fail("«new map» did not open the editor");
+                Log($"builder: new map «{g.Builder.Editor.Map.Name}», {g.Builder.Editor.Map.Pieces.Count} pieces, catalog {g.Builder.Editor.Catalog?.Pieces.Length ?? 0}");
+            }),
+            ("m03_tap_selects_piece", g =>
+            {
+                var b = g.Builder;
+                var pos = b.ToPanel(b.Editor.Map.Pieces[2].Position); // the middle of the start tower
+                b.OnPointerDown(1, pos);
+                b.OnPointerUp(1, pos);
+                if (!b.Editor.SinglePiece) Fail("a tap did not select a piece");
+            }),
+            (null, g =>
+            {
+                // Drag the selected piece 160 points to the right with a finger, then undo.
+                var b = g.Builder;
+                var e = b.Editor;
+                var piece = e.SelectedPiece;
+                if (piece == null) return;
+                _dragFrom = piece.Position;
+                var pos = b.ToPanel(e.SelectionBounds().center);
+                b.OnPointerDown(1, pos);
+                for (int i = 1; i <= 8; i++) b.OnPointerMove(1, pos + new Vector2(20f * i, 0f));
+                b.OnPointerUp(1, pos + new Vector2(160f, 0f));
+                float moved = piece.X - _dragFrom.x;
+                Log($"builder: finger drag moved the piece {moved:0.00} m");
+                if (moved < 1f) Fail("a finger drag did not move the piece");
+                e.Undo();
+                if ((e.Map.Pieces[2].Position - _dragFrom).sqrMagnitude > 1e-6f) Fail("undo did not put the piece back");
+
+                // Two fingers apart: zoom in.
+                float size = b.CameraSize;
+                Vector2 c = b.ToPanel(b.CameraCenter);
+                b.OnPointerDown(1, c - new Vector2(100f, 0f));
+                b.OnPointerDown(2, c + new Vector2(100f, 0f));
+                b.OnPointerMove(2, c + new Vector2(300f, 0f));
+                b.OnPointerUp(2, c + new Vector2(300f, 0f));
+                b.OnPointerUp(1, c - new Vector2(100f, 0f));
+                Log($"builder: pinch {size:0.0} → {b.CameraSize:0.0} m");
+                if (b.CameraSize >= size) Fail("a pinch did not zoom in");
+            }),
+            ("m04_copy_beside", g =>
+            {
+                var e = g.Builder.Editor;
+                int tree = e.Map.Pieces.FindIndex(p => p.Art.StartsWith("tree"));
+                e.SelectPieces(new[] { tree });
+                g.Builder.UI.ToolClicked?.Invoke(MapBuilderUI.Tool.CopyRight);
+                g.Builder.UI.ToolClicked?.Invoke(MapBuilderUI.Tool.CopyRight);
+            }),
+            ("m05_palette_construction", g =>
+            {
+                g.Builder.UI.SelectTab(2);
+                g.Builder.UI.AddPiece?.Invoke("bush02");
+                g.Builder.UI.SelectTab(1);
+            }),
+            ("m06_walls_shown", g => g.Builder.UI.ToggleWalls?.Invoke()),
+            ("m07_settings", g =>
+            {
+                g.Builder.UI.ToggleWalls?.Invoke();
+                g.Builder.UI.OpenSettings?.Invoke();
+                g.Builder.UI.WindStep?.Invoke(1);
+            }),
+            ("m08_target_selected", g =>
+            {
+                g.Builder.UI.SettingsClosed?.Invoke();
+                g.Builder.UI.SelectTab(4);
+                g.Builder.UI.FocusStrip?.Invoke(StripKind.Target);
+            }),
+        };
+
+        static readonly (string shot, System.Action<GameRoot> act)[] BuilderAfter =
+        {
+            ("m10_back_in_editor_passed", g =>
+            {
+                g.LeaveToMenu(); // the summary's first button: «to EDITOR»
+                if (!g.Builder.EditorOpen) Fail("did not come back to the editor");
+            }),
+            ("m11_share_dialog", g => g.Builder.UI.Share?.Invoke()),
+            ("m12_import_dialog", g =>
+            {
+                g.UI.DialogBack();
+                string code = MapCode.Encode(g.Builder.Editor.Map);
+                Log($"builder: share code {code.Length} chars");
+                g.Builder.CloseEditor();
+                if (!g.Builder.Import("Лови карту!\n" + code + "\nПройдёшь?")) Fail("the shared code was not imported");
+            }),
+            ("m13_maps_list", g =>
+            {
+                g.UI.DialogBack();
+                if (g.Builder.Maps.Count != 2) Fail($"expected 2 maps, got {g.Builder.Maps.Count}");
+            }),
+            ("m14_map_actions", g => g.Builder.UI.CardClicked?.Invoke(0)),
+            ("m15_pick_level", g =>
+            {
+                g.UI.DialogBack();
+                g.Builder.UI.FromLevel?.Invoke();
+                g.ShowLevelSelect(2);
+            }),
+            ("m16_map_from_expert4", g =>
+            {
+                g.ClickLevel(3);
+                if (!g.Builder.EditorOpen) Fail("«from level» did not open the editor");
+                else Log($"builder: from level «{g.Builder.Editor.Map.Name}», {g.Builder.Editor.Map.Pieces.Count} pieces, {g.Builder.Editor.Map.Platforms.Count} platforms");
+            }),
+            ("m17_night", g => g.Builder.Editor.SetNight(true)),
+            ("m18_maps_list_three", g =>
+            {
+                g.Builder.Editor.Undo();
+                if (g.Builder.Editor.Map.Night) Fail("undo did not bring the day back");
+                g.Builder.CloseEditor();
+                if (g.Builder.Maps.Count != 3) Fail($"expected 3 maps, got {g.Builder.Maps.Count}");
+            }),
+        };
 
         static int _levelShot, _tourStep, _runDStep, _extraShot;
         static readonly (int stage, int level, string shot)[] ExtraLevels =
@@ -308,14 +500,14 @@ namespace StickmanJumper.EditorTools
         {
             ("00b_settings", g => g.ShowSettings()),
             ("00c_reset_are_you_sure", g => g.AskResetProgress()),
-            ("00d_map_builder_stub", g =>
+            ("00d_my_maps_empty", g =>
             {
                 g.UI.DialogBack(); // = «cancel»
                 if (g.UI.DialogVisible) Fail("«cancel» did not close the reset dialog");
                 g.ShowMainMenu();
-                g.ShowBuilderStub();
+                g.ShowMaps();
             }),
-            ("00e_menu_english", g => { g.UI.DialogBack(); g.SetLanguage(Language.En); g.ShowMainMenu(); }),
+            ("00e_menu_english", g => { g.SetLanguage(Language.En); g.ShowMainMenu(); }),
             ("00f_settings_english", g => g.ShowSettings()),
             ("00g_secret_unlock_all", g => { g.SetLanguage(Language.Ru); g.ShowSettings(); g.UnlockAll(); }), // = holding «reset» for 5 s
             ("00h_all_stages_open", g => { g.UI.DialogBack(); g.ShowStageSelect(); g.UI.FocusStage(2); }),
@@ -490,6 +682,7 @@ namespace StickmanJumper.EditorTools
             EditorApplication.update -= Tick;
             Application.logMessageReceived -= OnLog;
             SessionState.SetBool(ActiveKey, false);
+            MapStore.FolderOverride = null;
             Application.runInBackground = SessionState.GetBool(BackgroundKey, Application.runInBackground);
             Armed.Clear();
             string backup = SessionState.GetString(BackupKey, "");

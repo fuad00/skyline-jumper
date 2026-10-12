@@ -95,6 +95,10 @@ namespace StickmanJumper.Config
         public Sprite Lamp;
         public Sprite Hydrant;
 
+        [Header("Редактор карт")]
+        [Tooltip("Детали для карт (сейчас — картинки уровней оригинала, заглушки). Пусто — редактор без деталей.")]
+        public PieceCatalog Pieces;
+
         [Header("Иконки интерфейса")]
         public Sprite IconTime;
         public Sprite IconWind;

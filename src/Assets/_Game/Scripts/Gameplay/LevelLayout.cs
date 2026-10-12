@@ -134,8 +134,11 @@ namespace StickmanJumper.Gameplay
                 TimeLimit = Mathf.Max(1f, level.TimeLimit),
                 MaxFallSpeed = level.MaxFallSpeed,
             };
+            // The street under everything (maps from the builder may also reach left of zero).
+            float streetFrom = Mathf.Min(0f, scene.Runway.xMin, scene.Platform.xMin);
             float width = Mathf.Max(scene.Size.x, scene.Platform.xMax, scene.Runway.xMax);
-            layout._solids.Add(new Solid(new Rect(-GroundMargin, -GroundDepth, width + 2f * GroundMargin, GroundDepth), SolidKind.Ground, false));
+            if (scene.Solids != null) foreach (var r in scene.Solids) { streetFrom = Mathf.Min(streetFrom, r.xMin); width = Mathf.Max(width, r.xMax); }
+            layout._solids.Add(new Solid(Rect.MinMaxRect(streetFrom - GroundMargin, -GroundDepth, width + GroundMargin, 0f), SolidKind.Ground, false));
             var rects = Merge(scene.Solids);
             foreach (var r in rects) layout._solids.Add(new Solid(r, SolidKind.Building, false));
             int scenery = layout._solids.Count;

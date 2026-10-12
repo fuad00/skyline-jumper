@@ -95,6 +95,7 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 894ce9af1ab624bb6b25e7c93971334c, type: 3}
   Lamp: {fileID: 21300000, guid: 7bff97059c7af425295560c4c478415b, type: 3}
   Hydrant: {fileID: 21300000, guid: 7811854c03b9641d49a853a693e5012b, type: 3}
+  Pieces: {fileID: 11400000, guid: 9cfdd45dc072a43b29c4c7dd3b0efa30, type: 2}
   IconTime: {fileID: 21300000, guid: 72cc9f1da7dad4c1787357def970d87e, type: 3}
   IconWind: {fileID: 21300000, guid: 9745e25f817384a578184bae5e69ebe8, type: 3}
   IconZoom: {fileID: 21300000, guid: 4319390b3e7004a5ea8d22f7388a2645, type: 3}

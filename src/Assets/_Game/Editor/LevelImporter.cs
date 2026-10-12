@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using StickmanJumper.Config;
+using StickmanJumper.Gameplay;
 using UnityEditor;
 using UnityEngine;
 
@@ -118,6 +119,7 @@ namespace StickmanJumper.EditorTools
             var atlas = new Texture2D(2, 2, TextureFormat.RGBA32, false);
             atlas.LoadImage(File.ReadAllBytes(Path.Combine(assetsDir, Atlas + ".png")));
             var sizes = new Dictionary<string, Vector2Int>();
+            var looks = new Dictionary<string, (Rect opaque, int w, int h, byte[] mask)>();
             var written = new HashSet<string>();
             foreach (var image in images)
             {
@@ -141,6 +143,7 @@ namespace StickmanJumper.EditorTools
                 }
                 if (BrandAreas.TryGetValue(image, out var brand)) PaintOver(tex, brand);
                 tex.Apply();
+                looks[image] = Look(tex);
                 string path = $"{ArtFolder}/{image}";
                 File.WriteAllBytes(path, tex.EncodeToPNG());
                 sizes[image] = new Vector2Int(tex.width, tex.height);
@@ -188,6 +191,9 @@ namespace StickmanJumper.EditorTools
                 stage.Levels = stageLevels.ToArray();
                 EditorUtility.SetDirty(stage);
             }
+            // 3. Pieces of the map builder: the same pictures, with their shapes and the usual scale and layer.
+            BuildCatalog(Load<PieceCatalog>(CatalogPath, keep), levels.Select(l => l.plist), shapes, sizes, looks);
+
             foreach (var folder in new[] { Folder, ArtFolder })
                 foreach (var guid in AssetDatabase.FindAssets("", new[] { folder }))
                 {
@@ -207,6 +213,105 @@ namespace StickmanJumper.EditorTools
             asset = ScriptableObject.CreateInstance<T>();
             AssetDatabase.CreateAsset(asset, path);
             return asset;
+        }
+
+        // ------------------------------------------------------------------ map builder pieces
+
+        public const string CatalogPath = Folder + "/PieceCatalog.asset";
+
+        /// <summary>Id детали в картах. Имена с брендом студии оригинала заменены нейтральными.</summary>
+        static readonly Dictionary<string, string> PieceRenames = new Dictionary<string, string>
+        {
+            { "zeppelinDjinnWorks", "zeppelin1" },
+            { "zeppelinWingsuitStickman", "zeppelin2" },
+        };
+
+        public static string PieceId(string image)
+        {
+            string name = Path.GetFileNameWithoutExtension(image);
+            return PieceRenames.TryGetValue(name, out var renamed) ? renamed : name;
+        }
+
+        static PieceGroup GroupOf(string id)
+        {
+            string n = id.ToLowerInvariant();
+            if (n.StartsWith("building04steel")) return PieceGroup.Construction;
+            if (n.StartsWith("building")) return PieceGroup.Buildings;
+            foreach (var k in new[] { "crane", "underconstruction", "scuffold", "carrierrack", "barrier", "blackline" })
+                if (n.Contains(k)) return PieceGroup.Construction;
+            foreach (var k in new[] { "cloud", "zeppelin", "heli", "bird" })
+                if (n.StartsWith(k)) return PieceGroup.Sky;
+            return PieceGroup.Street;
+        }
+
+        /// <summary>Непрозрачная часть картинки и маска по клеткам <see cref="PieceCatalog.MaskCell"/> px.</summary>
+        static (Rect opaque, int w, int h, byte[] mask) Look(Texture2D tex)
+        {
+            int cell = PieceCatalog.MaskCell, tw = tex.width, th = tex.height;
+            int mw = (tw + cell - 1) / cell, mh = (th + cell - 1) / cell;
+            var mask = new byte[(mw * mh + 7) / 8];
+            var px = tex.GetPixels32();
+            int x0 = tw, y0 = th, x1 = -1, y1 = -1;
+            for (int y = 0; y < th; y++)
+                for (int x = 0; x < tw; x++)
+                {
+                    if (px[y * tw + x].a < 40) continue;
+                    x0 = Mathf.Min(x0, x); x1 = Mathf.Max(x1, x);
+                    y0 = Mathf.Min(y0, y); y1 = Mathf.Max(y1, y);
+                    int bit = y / cell * mw + x / cell;
+                    mask[bit / 8] |= (byte)(1 << (bit % 8));
+                }
+            var opaque = x1 < 0 ? new Rect(0f, 0f, tw, th) : Rect.MinMaxRect(x0, y0, x1 + 1, y1 + 1);
+            return (opaque, mw, mh, mask);
+        }
+
+        static void BuildCatalog(PieceCatalog catalog, IEnumerable<Dictionary<string, object>> levels, Dictionary<string, List<Vector2[]>> shapes,
+            Dictionary<string, Vector2Int> sizes, Dictionary<string, (Rect opaque, int w, int h, byte[] mask)> looks)
+        {
+            // How each picture is usually placed in the original's levels.
+            var uses = new Dictionary<string, List<Dictionary<string, object>>>();
+            foreach (var plist in levels)
+                foreach (var n in Nodes(plist))
+                {
+                    if (!IsPicture(n)) continue;
+                    string image = Path.GetFileName(Str(n, "image"));
+                    if (!uses.TryGetValue(image, out var list)) uses[image] = list = new List<Dictionary<string, object>>();
+                    list.Add(n);
+                }
+            T Most<T>(IEnumerable<T> values, T fallback) => values.GroupBy(v => v).OrderByDescending(g => g.Count()).Select(g => g.Key).DefaultIfEmpty(fallback).First();
+
+            var pieces = new List<PieceDef>();
+            foreach (var pair in sizes.OrderBy(p => p.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                string image = pair.Key;
+                var size = pair.Value;
+                if (!looks.TryGetValue(image, out var look)) continue;
+                var nodes = uses.TryGetValue(image, out var used) ? used : new List<Dictionary<string, object>>();
+                var polys = shapes.TryGetValue(image, out var known) ? known.Where(p => p.Length > 0).ToList() : new List<Vector2[]>();
+                string id = PieceId(image);
+                pieces.Add(new PieceDef
+                {
+                    Id = id,
+                    Sprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{ArtFolder}/{image}"),
+                    Group = GroupOf(id),
+                    SizePx = size,
+                    OpaquePx = look.opaque,
+                    ShapePoints = polys.SelectMany(p => p).ToArray(),
+                    ShapeCounts = polys.Select(p => p.Length).ToArray(),
+                    Solid = nodes.Count(IsSolid) * 2 > nodes.Count,
+                    Kind = Most(nodes.Select(n => Str(n, "className")), string.Empty),
+                    AlwaysLit = Most(nodes.Select(n => NodeKeys(n).TryGetValue("objectLighting", out var lit) && lit == "1"), false),
+                    Scale = Most(nodes.Select(n => Mathf.Round(Mathf.Abs(Num(n, "scale.x", 1f)) * 10f) / 10f), 2f),
+                    Layer = Most(nodes.Select(n => Mathf.RoundToInt(Num(n, "zOrder"))), 0),
+                    Hidden = size.x < 4 || size.y < 4, // an empty stand-in for art missing from the package: kept for the levels, not offered
+                    MaskW = look.w,
+                    MaskH = look.h,
+                    Mask = look.mask,
+                });
+            }
+            catalog.Pieces = pieces.ToArray();
+            EditorUtility.SetDirty(catalog);
+            Rows.Add(("decoded/levels/*.landscape + physicShapes", CatalogPath, "Детали редактора карт (картинки уровней оригинала)"));
         }
 
         // ------------------------------------------------------------------ .landscape → LevelScene
@@ -258,26 +363,14 @@ namespace StickmanJumper.EditorTools
                         Alpha = Mathf.Clamp01(Num(n, "opacity", 255f) / 255f),
                         Kind = cls,
                         AlwaysLit = NodeKeys(n).TryGetValue("objectLighting", out var lit) && lit == "1",
+                        Solid = IsSolid(n),
                     });
-                    // Breakable glass and birds are not walls (in the original you fly through them).
-                    if (Str(n, "enablePhysics") != "1" || cls == "Glass" || cls == "Bird") continue;
-                    List<Vector2[]> polys = shapes.TryGetValue(image, out var known)
-                        ? known
-                        : new List<Vector2[]> { new[] { Vector2.zero, new Vector2(px.x, 0f), new Vector2(px.x, px.y), new Vector2(0f, px.y) } };
-                    float a = rot * Mathf.Deg2Rad, c = Mathf.Cos(a), s = Mathf.Sin(a);
-                    foreach (var poly in polys)
-                    {
-                        if (poly.Length == 0) continue;
-                        float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue;
-                        foreach (var p in poly) // image pixels, y up from the bottom-left corner
-                        {
-                            float lx = (p.x - px.x * 0.5f) * sx, ly = (p.y - px.y * 0.5f) * sy;
-                            var w = Point(x + lx * c - ly * s, y + lx * s + ly * c);
-                            x0 = Mathf.Min(x0, w.x); x1 = Mathf.Max(x1, w.x);
-                            y0 = Mathf.Min(y0, w.y); y1 = Mathf.Max(y1, w.y);
-                        }
-                        if (x1 - x0 > 0.05f && y1 - y0 > 0.05f) solids.Add(Rect.MinMaxRect(x0, y0, x1, y1));
-                    }
+                    if (!IsSolid(n)) continue;
+                    // Computed unmirrored (as in the file), then mirrored as a whole.
+                    var pieces = new List<Rect>();
+                    PictureShapes.AddSolids(pieces, shapes.TryGetValue(image, out var known) ? known : null, px, new Vector2(x, y) / UnitsPerMeter, new Vector2(sx, sy), rot);
+                    float w = width / UnitsPerMeter;
+                    foreach (var r in pieces) solids.Add(mirror ? Rect.MinMaxRect(w - r.xMax, r.yMin, w - r.xMin, r.yMax) : r);
                 }
                 else if (type == "LandscapeNodeObject")
                 {
@@ -325,6 +418,13 @@ namespace StickmanJumper.EditorTools
             scene.InterPlatforms = inter.ToArray();
             scene.InterLeft = interLeft.ToArray();
             scene.Lights = lights.ToArray();
+        }
+
+        /// <summary>Картинка — стена (в оригинале сквозь бьющееся стекло и птиц пролетают).</summary>
+        static bool IsSolid(Dictionary<string, object> n)
+        {
+            string cls = Str(n, "className");
+            return Str(n, "enablePhysics") == "1" && cls != "Glass" && cls != "Bird";
         }
 
         /// <summary>Картинка уровня, если не скрыта (LightSprite — обычная картинка, которая ещё и светится ночью).</summary>

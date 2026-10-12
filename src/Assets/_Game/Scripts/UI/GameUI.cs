@@ -8,7 +8,7 @@ using UnityEngine.UIElements;
 
 namespace StickmanJumper.UI
 {
-    public enum UIScreen { None, MainMenu, Settings, StageSelect, LevelSelect, Game, Summary }
+    public enum UIScreen { None, MainMenu, Settings, StageSelect, LevelSelect, Game, Summary, Maps, MapEditor }
 
     /// <summary>Что показать на карточке этапа.</summary>
     public struct StageCardView
@@ -87,6 +87,10 @@ namespace StickmanJumper.UI
         readonly Dictionary<Label, Func<string>> _texts = new Dictionary<Label, Func<string>>();
         bool _soundOn = true, _musicOn = true;
         Action _dialogBack;
+        /// <summary>Экраны, которые строят другие (конструктор карт): показываются, когда выбран их UIScreen.</summary>
+        readonly List<(UIScreen screen, VisualElement element)> _extraScreens = new List<(UIScreen, VisualElement)>();
+        /// <summary>Подпись первой кнопки паузы и итога: «в МЕНЮ», а для карт — «в РЕДАКТОР» / «к КАРТАМ».</summary>
+        Func<string> _menuSmall = () => UIText.MenuSmall, _menuBig = () => UIText.MenuBig;
 
         LevelLayout _mapLayout;
         Vector2 _mapPlayer;
@@ -193,14 +197,14 @@ namespace StickmanJumper.UI
 
             // Same cells as the original's pause: menu first, retry fourth, continue last.
             var pauseBar = root.Q<VisualElement>("pause-bar");
-            pauseBar.Add(Btn(() => UIText.MenuSmall, () => UIText.MenuBig, SlantButton.Red, () => MenuClicked?.Invoke(), first: true));
+            pauseBar.Add(Btn(() => _menuSmall(), () => _menuBig(), SlantButton.Red, () => MenuClicked?.Invoke(), first: true));
             pauseBar.Add(SlantButton.Blank());
             pauseBar.Add(SlantButton.Blank());
             pauseBar.Add(Btn(() => UIText.RetrySmall, () => UIText.RetryBig, SlantButton.Blue, () => RetryClicked?.Invoke()));
             pauseBar.Add(Btn(() => UIText.ContinueSmall, () => UIText.ContinueBig, SlantButton.Green, () => ContinueClicked?.Invoke(), last: true));
 
             var summaryBar = root.Q<VisualElement>("summary-bar");
-            summaryBar.Add(Btn(() => UIText.MenuSmall, () => UIText.MenuBig, SlantButton.Red, () => MenuClicked?.Invoke(), first: true));
+            summaryBar.Add(Btn(() => _menuSmall(), () => _menuBig(), SlantButton.Red, () => MenuClicked?.Invoke(), first: true));
             summaryBar.Add(SlantButton.Blank());
             summaryBar.Add(SlantButton.Blank());
             summaryBar.Add(Btn(() => UIText.RetrySmall, () => UIText.RetryBig, SlantButton.Blue, () => RetryClicked?.Invoke()));
@@ -286,6 +290,22 @@ namespace StickmanJumper.UI
 
         static void Display(VisualElement e, bool show) => e.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
 
+        /// <summary>Добавить чужой экран (под окном-вопросом, чтобы окна были поверх него).</summary>
+        public void AddScreen(UIScreen screen, VisualElement element)
+        {
+            _root.Insert(_root.IndexOf(_dialog), element);
+            _extraScreens.Add((screen, element));
+            Display(element, Screen == screen);
+        }
+
+        /// <summary>Куда ведёт первая кнопка паузы и итога (null — обычное «в МЕНЮ»).</summary>
+        public void SetMenuButton(Func<string> small, Func<string> big)
+        {
+            _menuSmall = small ?? (() => UIText.MenuSmall);
+            _menuBig = big ?? (() => UIText.MenuBig);
+            ApplyLanguage();
+        }
+
         // ------------------------------------------------------------------ screens
 
         public void Show(UIScreen screen)
@@ -298,6 +318,7 @@ namespace StickmanJumper.UI
             Display(_levelScreen, screen == UIScreen.LevelSelect);
             Display(_summary, screen == UIScreen.Summary);
             Display(_hud, screen == UIScreen.Game);
+            foreach (var (s, e) in _extraScreens) Display(e, s == screen);
             if (screen != UIScreen.Game) SetHint(string.Empty);
         }
 
@@ -659,13 +680,13 @@ namespace StickmanJumper.UI
 
         // ------------------------------------------------------------------ summary
 
-        public void ShowSummary(JumpOutcome outcome, int stage, int level, float distance, float best, bool newBest, int points, int stars, bool canGoNext)
+        public void ShowSummary(JumpOutcome outcome, string levelLine, float distance, float best, bool newBest, int points, int stars, bool canGoNext)
         {
             Show(UIScreen.Summary);
             var (small, big) = UIText.Title(outcome);
             _titleSmall.text = small;
             _titleBig.text = big;
-            _levelLine.text = UIText.LevelLine(stage, level);
+            _levelLine.text = levelLine;
             _distance.text = UIText.Meters(distance);
             _best.text = UIText.Meters(best);
             _points.text = UIText.Points(points);
