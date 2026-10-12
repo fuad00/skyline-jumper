@@ -66,6 +66,9 @@ MonoBehaviour:
   Flag: {fileID: 21300000, guid: e4b61a9c5acbb4072a910f933bd179f2, type: 3}
   FlagLast: {fileID: 21300000, guid: dbcbe227426e94a5fb92d254ce8c808c, type: 3}
   FlagGreen: {fileID: 21300000, guid: 8272c0256c6c5411b9a8dff2a0664de7, type: 3}
+  SignalOff: {fileID: 21300000, guid: 53573dbcc66c9401da49c58e4454efc3, type: 3}
+  SignalGreen: {fileID: 21300000, guid: d61df51d224964d079595a4691f18afe, type: 3}
+  SignalRed: {fileID: 21300000, guid: c544d3b79f9e74725968766226644840, type: 3}
   Digits:
   - {fileID: 21300000, guid: 48818c48d70f1417eb0cc8e3afd64ae1, type: 3}
   - {fileID: 21300000, guid: e3d5c14b8bddd4c98872f69d5a31ea0f, type: 3}

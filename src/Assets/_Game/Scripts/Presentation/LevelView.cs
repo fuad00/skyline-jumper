@@ -38,6 +38,12 @@ namespace StickmanJumper.Presentation
         static readonly Color TargetRed = new Color(0.86f, 0.1f, 0.1f);
 
         const float FlagHeight = 2.6f;
+        // Signal posts at the target's edges, like the original: 35 of its physics units tall (≈1.6 m), 3 units in from each edge.
+        const float SignalHeight = 1.6f;
+        const float SignalInset = 0.14f;
+        static readonly Color SignalPost = new Color(0.55f, 0.55f, 0.57f);
+        static readonly Color SignalDark = new Color(0.25f, 0.25f, 0.27f);
+        static readonly Color SignalGreen = new Color(0.2f, 0.9f, 0.25f);
         // The original shows ≈36 grid cells across the screen; one tile of the paper has ≈51.
         const float PaperTilesAcross = 36f / 51.2f;
         const float PaperDrift = 0.12f;
@@ -50,6 +56,10 @@ namespace StickmanJumper.Presentation
         readonly List<ParallaxLayer> _parallax = new List<ParallaxLayer>();
         readonly List<Cloud> _clouds = new List<Cloud>();
         SpriteRenderer _paper, _guide, _lastFlag;
+        /// <summary>Сигнальные столбики у краёв цели: картинка столбика и (без картинок оригинала) отдельная лампа.</summary>
+        readonly List<(SpriteRenderer post, SpriteRenderer lamp)> _signals = new List<(SpriteRenderer, SpriteRenderer)>();
+        /// <summary>Как сейчас горят столбики у цели.</summary>
+        public TargetLight Lights { get; private set; } = TargetLight.Off;
         /// <summary>Флажки промежуточных платформ (по номеру полосы; 0 — старт, без флажка).</summary>
         readonly Dictionary<int, SpriteRenderer> _platformFlags = new Dictionary<int, SpriteRenderer>();
 
@@ -433,12 +443,50 @@ namespace StickmanJumper.Presentation
                 _kit.Box("Pole", target, new Rect(_layout.ArrowX - 0.05f, y, 0.1f, FlagHeight), new Color(0.3f, 0.3f, 0.3f), SortOrder.Target);
                 _kit.Box("Cloth", target, new Rect(_layout.ArrowX, y + FlagHeight - 0.8f, 1.1f, 0.8f), TargetRed, SortOrder.Target);
             }
+            BuildSignal(target, _layout.TargetRect.xMin + SignalInset, y);
+            BuildSignal(target, _layout.TargetRect.xMax - SignalInset, y);
             if (_art.Dash != null)
             {
                 _guide = _kit.Make("Guide", target, _art.Dash, SortOrder.Target - 1);
                 _guide.drawMode = SpriteDrawMode.Tiled;
                 _guide.size = new Vector2(_art.Dash.bounds.size.x, 10f);
                 _guide.enabled = false;
+            }
+        }
+
+        void BuildSignal(Transform parent, float x, float y)
+        {
+            if (_art.SignalOff != null)
+            {
+                var post = _kit.Make("Signal", parent, _art.SignalOff, SortOrder.Target);
+                float s = SignalHeight / Mathf.Max(0.01f, _art.SignalOff.bounds.size.y);
+                post.transform.localScale = new Vector3(s, s, 1f);
+                post.transform.localPosition = new Vector3(x, y, 0f); // the pivot is at the foot of the post
+                _signals.Add((post, null));
+                return;
+            }
+            // No placeholders (fresh clone): a grey post with a square lamp on top.
+            var pole = _kit.Box("Signal", parent, new Rect(x - 0.1f, y, 0.2f, SignalHeight), SignalPost, SortOrder.Target);
+            var lamp = _kit.Box("SignalLamp", parent, new Rect(x - 0.17f, y + SignalHeight - 0.45f, 0.34f, 0.34f), SignalDark, SortOrder.Target + 1);
+            _signals.Add((pole, lamp));
+        }
+
+        /// <summary>
+        /// Столбики у цели (как в оригинале): пока прыжок идёт — выключены, сел на цель — зелёные, любой провал — красные.
+        /// </summary>
+        public void SetTargetLights(TargetLight light)
+        {
+            if (light == Lights) return;
+            Lights = light;
+            foreach (var (post, lamp) in _signals)
+            {
+                if (lamp != null)
+                {
+                    lamp.color = light == TargetLight.Green ? SignalGreen : light == TargetLight.Red ? TargetRed : SignalDark;
+                    continue;
+                }
+                var sprite = light == TargetLight.Green ? _art.SignalGreen : light == TargetLight.Red ? _art.SignalRed : _art.SignalOff;
+                if (sprite != null) post.sprite = sprite;
             }
         }
 
@@ -528,4 +576,7 @@ namespace StickmanJumper.Presentation
             }
         }
     }
+
+    /// <summary>Лампы сигнальных столбиков у цели.</summary>
+    public enum TargetLight { Off, Green, Red }
 }

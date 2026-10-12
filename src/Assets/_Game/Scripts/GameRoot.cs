@@ -79,6 +79,7 @@ namespace StickmanJumper
         public bool Ready => _ui != null && _session != null;
         public JumpSession Session => _session;
         public StickmanView Stickman => _stickman;
+        public LevelView LevelView => _levelView;
         public GameUI UI => _ui;
         public CameraRig2D CameraRig => _cameraRig;
         public LevelConfig Level => _level;
@@ -509,6 +510,7 @@ namespace StickmanJumper
             else _cameraRig.UpdateFixed(MenuCenter, _cameraConfig.SizeOnRoof, realDt);
             _levelView.SetPlayerLight(focus + Vector2.up);
             _levelView.SetGuideVisible((_playing || _demo) && _session.Phase == JumpPhase.Airborne);
+            _levelView.SetTargetLights(TargetLightsNow());
             _levelView.Update(_camera, Time.time, dt);
             _audio.Update(_session, _stickman.IsRagdoll, realDt);
 
@@ -567,6 +569,16 @@ namespace StickmanJumper
                     _stickman.BecomeRagdoll(_session.ImpactVelocity, _runIndex);
                     break;
             }
+        }
+
+        /// <summary>
+        /// Как в оригинале: столбики у цели загораются, как только итог известен — зелёным при «Молодец», красным при
+        /// любом провале (оторвал купол — провал уже ясен).
+        /// </summary>
+        TargetLight TargetLightsNow()
+        {
+            if (_session.Phase.IsFinished()) return _session.Outcome == JumpOutcome.WellDone ? TargetLight.Green : TargetLight.Red;
+            return _session.CanopyCut ? TargetLight.Red : TargetLight.Off;
         }
 
         void OnRagdollImpact(float speed)

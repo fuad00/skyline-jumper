@@ -82,6 +82,10 @@ namespace StickmanJumper.Config
         public Sprite FlagLast;
         [Tooltip("Зелёный флажок: на эту промежуточную платформу уже сел.")]
         public Sprite FlagGreen;
+        [Tooltip("Сигнальные столбики по краям цели (опора — низ): лампа выключена, зелёная (сел на цель), красная (провал).")]
+        public Sprite SignalOff;
+        public Sprite SignalGreen;
+        public Sprite SignalRed;
         [Tooltip("Цифры 0–9 для меток метров над крышей.")]
         public Sprite[] Digits = new Sprite[0];
         [Tooltip("Стрелка вниз под цифрой метки.")]

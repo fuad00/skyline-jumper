@@ -240,6 +240,9 @@ namespace StickmanJumper.EditorTools
             art.Flag = PlaceholderImporter.LoadSprite("flag");
             art.FlagLast = PlaceholderImporter.LoadSprite("lastFlag");
             art.FlagGreen = PlaceholderImporter.LoadSprite("flagGreen");
+            art.SignalOff = PlaceholderImporter.LoadSprite("signalOff");
+            art.SignalGreen = PlaceholderImporter.LoadSprite("signalGreen");
+            art.SignalRed = PlaceholderImporter.LoadSprite("signalRed");
             art.Digits = LoadAll("digit0", "digit1", "digit2", "digit3", "digit4", "digit5", "digit6", "digit7", "digit8", "digit9");
             art.Skyline = PlaceholderImporter.LoadSprite("skyline");
             art.Clouds = LoadAll("cloud1", "cloud2", "cloud3");

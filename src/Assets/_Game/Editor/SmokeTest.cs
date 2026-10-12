@@ -5,6 +5,7 @@ using StickmanJumper.Config;
 using StickmanJumper.Core;
 using StickmanJumper.Gameplay;
 using StickmanJumper.Maps;
+using StickmanJumper.Presentation;
 using StickmanJumper.UI;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -165,7 +166,13 @@ namespace StickmanJumper.EditorTools
                     break;
                 case 14: // overview before the first tap
                     CloseUp(Wait(0.6), "c01_stand");
-                    if (Wait(1.2) && _pendingSnap == null) { Snap("03_ready_overview"); g.Autopilot = new Autopilot(); Next(); }
+                    if (Wait(1.2) && _pendingSnap == null)
+                    {
+                        if (g.LevelView.Lights != TargetLight.Off) Fail("the target's signal lights are on before the jump");
+                        Snap("03_ready_overview");
+                        g.Autopilot = new Autopilot();
+                        Next();
+                    }
                     break;
                 case 15: // run A: autopilot plans the run-up, opens the canopy right before touchdown and should land on the flag
                     if (s.Phase == JumpPhase.Airborne && !s.CanopyDeployed) _peak = Mathf.Max(_peak, s.Feet.y - s.Level.RoofY);
@@ -182,8 +189,10 @@ namespace StickmanJumper.EditorTools
                     if (s.Phase == JumpPhase.Landed && !Armed.ContainsKey("c08")) Armed["c08"] = EditorApplication.timeSinceStartup;
                     CloseUp(s.Phase == JumpPhase.Landed && EditorApplication.timeSinceStartup - Armed["c08"] > 0.5, "c08_landed_canopy_falls", 3f, 1f);
                     CloseUp(s.Phase == JumpPhase.Landed && EditorApplication.timeSinceStartup - Armed["c08"] > 1.8, "c09_landed_cheer", 2f);
+                    TargetShot(g, s.Phase == JumpPhase.Landed && EditorApplication.timeSinceStartup - Armed["c08"] > 1.2, "09b_target_lights_green");
                     if (g.UI.SummaryVisible)
                     {
+                        if (g.LevelView.Lights != TargetLight.Green) Fail($"landed on the flag but the signal lights are {g.LevelView.Lights}");
                         Report("run A autopilot     ", g, JumpOutcome.WellDone);
                         Log(string.Format(CultureInfo.InvariantCulture, "jump peak above the roof: {0:0.00} m", _peak));
                         Next();
@@ -202,7 +211,13 @@ namespace StickmanJumper.EditorTools
                     ShotWhenDelayed(g.Stickman.IsRagdoll, "12_crash", 0.3);
                     if (g.Stickman.IsRagdoll && !Armed.ContainsKey("c10")) Armed["c10"] = EditorApplication.timeSinceStartup;
                     CloseUp(g.Stickman.IsRagdoll && EditorApplication.timeSinceStartup - Armed["c10"] > 1.2, "c10_crash_ragdoll", 2.2f);
-                    if (g.UI.SummaryVisible) { Report("run B no canopy     ", g, JumpOutcome.Died); Next(); }
+                    TargetShot(g, g.Stickman.IsRagdoll && EditorApplication.timeSinceStartup - Armed["c10"] > 0.6, "12b_target_lights_red");
+                    if (g.UI.SummaryVisible)
+                    {
+                        if (g.LevelView.Lights != TargetLight.Red) Fail($"crashed but the signal lights are {g.LevelView.Lights}");
+                        Report("run B no canopy     ", g, JumpOutcome.Died);
+                        Next();
+                    }
                     break;
                 case 19:
                     if (Wait(0.6)) { Snap("13_summary_died"); Next(); }
@@ -579,6 +594,17 @@ namespace StickmanJumper.EditorTools
         // ---------------------------------------------------------------- snapshots (scene + UI)
 
         /// <summary>Крупный план стикмена (камера на время снимка подъезжает к нему).</summary>
+        /// <summary>Снимок цели целиком (флажок и столбики по краям).</summary>
+        static void TargetShot(GameRoot g, bool condition, string name)
+        {
+            if (!condition || Shots.Contains(name) || _pendingSnap != null) return;
+            Shots.Add(name);
+            Snap(name);
+            var l = g.Session.Level;
+            _closeSize = Mathf.Max(3f, l.TargetRect.width * 0.35f);
+            _closeAt = new Vector2(l.TargetRect.center.x, l.TargetY + _closeSize * 0.6f);
+        }
+
         static void CloseUp(bool condition, string name, float size = 1.6f, float up = 0f)
         {
             if (!condition || Shots.Contains(name) || _pendingSnap != null) return;
