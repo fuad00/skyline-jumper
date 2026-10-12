@@ -93,6 +93,8 @@ namespace StickmanJumper.UI
 
         public event Action Tapped, PlayClicked, SoundClicked, MusicClicked, BackClicked;
         public event Action SettingsClicked, BuilderClicked, LanguageClicked, ResetClicked;
+        /// <summary>Секрет: «сбросить прогресс» держали 5 секунд — открыть всё для проверки карт.</summary>
+        public event Action UnlockAllHeld;
         public event Action MenuClicked, RetryClicked, NextClicked, ContinueClicked, PauseClicked, ZoomClicked;
         public event Action<int> StageClicked, LevelClicked;
 
@@ -182,7 +184,8 @@ namespace StickmanJumper.UI
             _settingsBar.Add(Btn(() => UIText.SoundSmall, () => _soundOn ? UIText.On : UIText.Off, SlantButton.Blue, () => SoundClicked?.Invoke()));
             _settingsBar.Add(Btn(() => UIText.MusicSmall, () => _musicOn ? UIText.On : UIText.Off, SlantButton.Blue, () => MusicClicked?.Invoke()));
             _settingsBar.Add(Btn(() => UIText.LanguageSmall, () => UIText.LanguageBig, SlantButton.Blue, () => LanguageClicked?.Invoke()));
-            _settingsBar.Add(Btn(() => UIText.ResetSmall, () => UIText.ResetBig, SlantButton.Blue, () => ResetClicked?.Invoke(), last: true));
+            _settingsBar.Add(Btn(() => UIText.ResetSmall, () => UIText.ResetBig, SlantButton.Blue, () => ResetClicked?.Invoke(), last: true)
+                .OnHold(5f, () => UnlockAllHeld?.Invoke()));
 
             Bar(root.Q<VisualElement>("stage-bar"), Btn(null, () => UIText.Back, SlantButton.Red, () => BackClicked?.Invoke(), first: true));
             Bar(root.Q<VisualElement>("level-bar"), Btn(null, () => UIText.Back, SlantButton.Red, () => BackClicked?.Invoke(), first: true));

@@ -25,7 +25,10 @@ namespace StickmanJumper.UI
         readonly Color _fill;
         readonly bool _first, _last;
         readonly Label _small, _big;
-        bool _hover, _down;
+        bool _hover, _down, _suppressClick;
+        float _holdSeconds, _downAt;
+        Action _onHold;
+        IVisualElementScheduledItem _holdCheck;
 
         public SlantButton(string small, string big, Color fill, Action onClick, bool first = false, bool last = false)
         {
@@ -43,14 +46,36 @@ namespace StickmanJumper.UI
             Add(_small);
             Add(_big);
             ShowLabels();
-            if (onClick != null) clicked += onClick;
+            if (onClick != null)
+                clicked += () =>
+                {
+                    if (_suppressClick) { _suppressClick = false; return; } // the press was a long hold, not a tap
+                    onClick();
+                };
             else SetEnabled(false);
             generateVisualContent += Draw;
             RegisterCallback<PointerEnterEvent>(_ => { _hover = true; MarkDirtyRepaint(); });
             RegisterCallback<PointerLeaveEvent>(_ => { _hover = false; _down = false; MarkDirtyRepaint(); });
-            RegisterCallback<PointerDownEvent>(_ => { _down = true; MarkDirtyRepaint(); }, TrickleDown.TrickleDown);
+            RegisterCallback<PointerDownEvent>(_ => { _down = true; _downAt = UnityEngine.Time.realtimeSinceStartup; MarkDirtyRepaint(); }, TrickleDown.TrickleDown);
             RegisterCallback<PointerUpEvent>(_ => { _down = false; MarkDirtyRepaint(); });
             RegisterCallback<GeometryChangedEvent>(_ => FitText());
+        }
+
+        /// <summary>Долгое удержание (секретные действия): держишь seconds — срабатывает action, обычного нажатия уже не будет.</summary>
+        public SlantButton OnHold(float seconds, Action action)
+        {
+            _holdSeconds = seconds;
+            _onHold = action;
+            _holdCheck ??= schedule.Execute(CheckHold).Every(100);
+            return this;
+        }
+
+        void CheckHold()
+        {
+            if (!_down || _onHold == null || _suppressClick) return;
+            if (UnityEngine.Time.realtimeSinceStartup - _downAt < _holdSeconds) return;
+            _suppressClick = true;
+            _onHold();
         }
 
         public void SetLabels(string small, string big)

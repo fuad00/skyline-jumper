@@ -92,6 +92,19 @@ namespace StickmanJumper.Tests
         }
 
         [Test]
+        public void UnlockAll_OpensEveryLevel_ResetCloses()
+        {
+            var save = new SaveService(new MemoryStore());
+            var ids = new List<string> { "a", "b", "c" };
+            Assert.IsFalse(save.IsUnlocked(ids, 2));
+            save.Data.UnlockAll = true;
+            Assert.IsTrue(save.IsUnlocked(ids, 1));
+            Assert.IsTrue(save.IsUnlocked(ids, 2));
+            save.ResetProgress();
+            Assert.IsFalse(save.IsUnlocked(ids, 2), "a normal reset puts the usual order back");
+        }
+
+        [Test]
         public void OldSave_WithoutLanguage_StaysRussian()
         {
             var data = SaveService.Parse("{\"Version\":1,\"Levels\":[],\"Sound\":true,\"Music\":true}");

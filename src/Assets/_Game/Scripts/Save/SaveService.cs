@@ -26,6 +26,8 @@ namespace StickmanJumper.Save
         public bool Music = true;
         /// <summary>Язык интерфейса: «ru» или «en». Пусто — ещё не выбирал (русский).</summary>
         public string Language = string.Empty;
+        /// <summary>Секрет для проверки карт: открыты все этапы и уровни (5 с держать «сбросить прогресс»).</summary>
+        public bool UnlockAll;
     }
 
     /// <summary>Где лежит сохранение (PlayerPrefs в игре, память в тестах).</summary>
@@ -117,9 +119,13 @@ namespace StickmanJumper.Save
         }
 
         /// <summary>Кнопка «сбросить прогресс»: стираем звёзды и рекорды, настройки (звук, музыка, язык) оставляем.</summary>
-        public void ResetProgress() => Data.Levels.Clear();
+        public void ResetProgress()
+        {
+            Data.Levels.Clear();
+            Data.UnlockAll = false; // back to the normal order
+        }
 
         /// <summary>Уровень открыт, если он первый или предыдущий пройден хотя бы на одну звезду.</summary>
-        public bool IsUnlocked(IReadOnlyList<string> levelIds, int index) => index <= 0 || Stars(levelIds[index - 1]) > 0;
+        public bool IsUnlocked(IReadOnlyList<string> levelIds, int index) => Data.UnlockAll || index <= 0 || Stars(levelIds[index - 1]) > 0;
     }
 }

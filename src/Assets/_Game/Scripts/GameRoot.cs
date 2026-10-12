@@ -95,6 +95,7 @@ namespace StickmanJumper
             _ui.BuilderClicked += () => { _audio.Click(); ShowBuilderStub(); };
             _ui.LanguageClicked += () => { _audio.Click(); SetLanguage(UIText.Lang == Language.Ru ? Language.En : Language.Ru); };
             _ui.ResetClicked += () => { _audio.Click(); AskResetProgress(); };
+            _ui.UnlockAllHeld += () => { _audio.Click(); UnlockAll(); };
             _ui.SoundClicked += () => { _save.Data.Sound = !_save.Data.Sound; _audio.SetSound(_save.Data.Sound); _save.Persist(); _audio.Click(); RefreshSoundButtons(); };
             _ui.MusicClicked += () => { _save.Data.Music = !_save.Data.Music; _audio.SetMusic(_save.Data.Music); _save.Persist(); _audio.Click(); RefreshSoundButtons(); };
             _ui.StageClicked += i => { _audio.Click(); ShowLevelSelect(i); };
@@ -158,6 +159,15 @@ namespace StickmanJumper
             _levelView.SetLastRunFlag(float.NaN);
         }
 
+        /// <summary>Секрет для ручной проверки карт: все этапы и уровни открыты (сброс прогресса возвращает как было).</summary>
+        public void UnlockAll()
+        {
+            _save.Data.UnlockAll = true;
+            _save.Persist();
+            _ui.ShowDialog(UIText.SecretTitle, UIText.UnlockAllText,
+                new DialogButton(null, UIText.OkBig, SlantButton.Green, () => { _audio.Click(); _ui.HideDialog(); }));
+        }
+
         /// <summary>Конструктор карт — пока пустышка: только сообщение «скоро».</summary>
         public void ShowBuilderStub()
         {
@@ -213,7 +223,7 @@ namespace StickmanJumper
                 Stars = _save.TotalStars(ids),
                 MaxStars = ids.Count * 3,
                 NeedStars = Mathf.Max(0, stage.StarsToUnlock - before),
-                Locked = before < stage.StarsToUnlock,
+                Locked = !_save.Data.UnlockAll && before < stage.StarsToUnlock,
                 Empty = ids.Count == 0,
             };
         }

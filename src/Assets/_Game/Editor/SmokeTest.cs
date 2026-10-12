@@ -283,6 +283,8 @@ namespace StickmanJumper.EditorTools
             }),
             ("00e_menu_english", g => { g.UI.DialogBack(); g.SetLanguage(Language.En); g.ShowMainMenu(); }),
             ("00f_settings_english", g => g.ShowSettings()),
+            ("00g_secret_unlock_all", g => { g.SetLanguage(Language.Ru); g.ShowSettings(); g.UnlockAll(); }), // = holding «reset» for 5 s
+            ("00h_all_stages_open", g => { g.UI.DialogBack(); g.ShowStageSelect(); g.UI.FocusStage(2); }),
         };
 
         static bool MenuTour(GameRoot g)
@@ -291,6 +293,8 @@ namespace StickmanJumper.EditorTools
             if (step >= Tour.Length)
             {
                 g.SetLanguage(Language.Ru);
+                g.Save.Data.UnlockAll = false; // the runs below check the normal unlock order
+                g.Save.Persist();
                 g.ShowMainMenu();
                 return true;
             }

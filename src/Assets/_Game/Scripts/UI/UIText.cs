@@ -79,6 +79,9 @@ namespace StickmanJumper.UI
         public static string BuilderText => T("Конструктор карт появится в следующих версиях:\nтам можно будет строить свои уровни.",
             "The map builder arrives in a future version:\nyou will build your own levels there.");
         public static string OkBig => T("ПОНЯТНО", "OK");
+        public static string SecretTitle => T("Секрет!", "Secret!");
+        public static string UnlockAllText => T("Все этапы и уровни открыты — можно проверить каждую карту.\nОбычный «сбросить прогресс» вернёт всё как было.",
+            "All stages and levels are open — try every map.\nA normal «reset progress» puts everything back.");
 
         public static string DistanceLabel => T("ДО ФЛАЖКА", "DISTANCE");
         public static string BestLabel => T("ЛУЧШЕЕ", "BEST");
