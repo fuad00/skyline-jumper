@@ -66,3 +66,6 @@ CLAUDE.local.md
 
 # === Временные файлы тестов Unity (PerformanceTestRun*.json кладутся сюда при прогоне тестов) ===
 /src/Assets/Resources/
+
+# === Временная папка нативной сборки Android (CMake/Gradle), пересоздаётся при каждой сборке APK ===
+/src/.utmp/
