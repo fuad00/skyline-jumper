@@ -30,6 +30,8 @@ namespace StickmanJumper.EditorTools
         static bool _hooked;
         static string _pendingSnap;
         static int _snapFrames;
+        static float _closeSize;      // >0: close-up of the stickman, camera half-height in metres
+        static Vector2 _closeOffset;  // close-up centre relative to the stickman's middle
         static float _peak;
         static RenderTexture _uiRt;
         static readonly HashSet<string> Shots = new HashSet<string>();
@@ -133,16 +135,27 @@ namespace StickmanJumper.EditorTools
                     Next();
                     break;
                 case 14: // overview before the first tap
-                    if (Wait(1.2)) { Snap("03_ready_overview"); g.Autopilot = new Autopilot(); Next(); }
+                    CloseUp(Wait(0.6), "c01_stand");
+                    if (Wait(1.2) && _pendingSnap == null) { Snap("03_ready_overview"); g.Autopilot = new Autopilot(); Next(); }
                     break;
                 case 15: // run A: autopilot plans run-up + canopy height and should land on the flag
                     if (s.Phase == JumpPhase.Airborne && !s.CanopyDeployed) _peak = Mathf.Max(_peak, s.Feet.y - s.Level.RoofY);
                     ShotWhen(s.Phase == JumpPhase.BackingUp && s.Level.EdgeX - s.Feet.x > 2.2f, "04_walk_back_facing_away");
                     ShotWhen(s.Phase == JumpPhase.Running && s.Velocity.x > 5f, "05_running");
+                    CloseUp(s.Phase == JumpPhase.BackingUp && s.Level.EdgeX - s.Feet.x > 1.5f, "c02_walk_back");
+                    CloseUp(s.Phase == JumpPhase.Running && s.Velocity.x > 6f, "c03_run");
+                    CloseUp(s.Phase == JumpPhase.Airborne && s.Elapsed - _takeoffAt > 0.12f && s.Velocity.y > 0f, "c04_takeoff", 2f);
+                    CloseUp(s.Phase == JumpPhase.Airborne && !s.CanopyDeployed && s.Velocity.y < -8f, "c05_dive", 2f);
+                    CloseUp(s.Phase == JumpPhase.Airborne && s.CanopyDeployed && s.Canopy > 0.3f && s.Canopy < 0.8f, "c06_canopy_opening", 4.5f, 2.5f);
+                    CloseUp(s.Phase == JumpPhase.Airborne && s.Canopy >= 1f && s.Feet.y > s.Level.TargetRect.yMax + 4f, "c07_canopy", 4.5f, 2.5f);
+                    if (s.Phase != JumpPhase.Airborne) _takeoffAt = s.Elapsed;
                     ShotWhen(s.Phase == JumpPhase.Airborne && s.Velocity.y > 0f && s.Feet.x > s.Level.EdgeX + 0.6f, "06_takeoff");
                     ShotWhen(s.Phase == JumpPhase.Airborne && !s.CanopyDeployed && s.Velocity.y < -14f, "07_freefall_guide");
                     ShotWhen(s.Phase == JumpPhase.Airborne && s.Canopy >= 1f && s.Feet.y < s.Level.TargetRect.yMax + 8f, "08_canopy");
                     ShotWhenDelayed(s.Phase == JumpPhase.Landed, "09_landed", 0.9);
+                    if (s.Phase == JumpPhase.Landed && !Armed.ContainsKey("c08")) Armed["c08"] = EditorApplication.timeSinceStartup;
+                    CloseUp(s.Phase == JumpPhase.Landed && EditorApplication.timeSinceStartup - Armed["c08"] > 0.5, "c08_landed_canopy_falls", 3f, 1f);
+                    CloseUp(s.Phase == JumpPhase.Landed && EditorApplication.timeSinceStartup - Armed["c08"] > 1.8, "c09_landed_cheer", 2f);
                     if (g.UI.SummaryVisible)
                     {
                         Report("run A autopilot     ", g, JumpOutcome.WellDone);
@@ -161,6 +174,8 @@ namespace StickmanJumper.EditorTools
                 case 18: // run B: «Last» flag of the previous run is on the roof; no canopy → crash
                     ShotWhen(s.Phase == JumpPhase.BackingUp && s.Level.EdgeX - s.Feet.x > 3f, "11_roof_markers_last_flag");
                     ShotWhenDelayed(g.Stickman.IsRagdoll, "12_crash", 0.3);
+                    if (g.Stickman.IsRagdoll && !Armed.ContainsKey("c10")) Armed["c10"] = EditorApplication.timeSinceStartup;
+                    CloseUp(g.Stickman.IsRagdoll && EditorApplication.timeSinceStartup - Armed["c10"] > 1.2, "c10_crash_ragdoll", 2.2f);
                     if (g.UI.SummaryVisible) { Report("run B no canopy     ", g, JumpOutcome.Died); Next(); }
                     break;
                 case 19:
@@ -173,6 +188,8 @@ namespace StickmanJumper.EditorTools
                     break;
                 case 21: // run C: never taps jump → stumbles off the edge
                     ShotWhenDelayed(g.Stickman.IsRagdoll, "14_stumble", 0.45);
+                    if (g.Stickman.IsRagdoll && !Armed.ContainsKey("c11")) Armed["c11"] = EditorApplication.timeSinceStartup;
+                    CloseUp(g.Stickman.IsRagdoll && EditorApplication.timeSinceStartup - Armed["c11"] > 1.5, "c11_stumble_ragdoll", 2.2f);
                     if (g.UI.SummaryVisible) { Report("run C missed edge   ", g, JumpOutcome.Died); Next(); }
                     break;
                 case 22:
@@ -213,6 +230,7 @@ namespace StickmanJumper.EditorTools
         }
 
         static int _levelShot, _tourStep;
+        static float _takeoffAt;
 
         /// <summary>Шаг тура по меню: действие, пауза, снимок. Действие следующего шага — только после снимка.</summary>
         static readonly (string shot, System.Action<GameRoot> act)[] Tour =
@@ -293,8 +311,19 @@ namespace StickmanJumper.EditorTools
 
         // ---------------------------------------------------------------- snapshots (scene + UI)
 
+        /// <summary>Крупный план стикмена (камера на время снимка подъезжает к нему).</summary>
+        static void CloseUp(bool condition, string name, float size = 1.6f, float up = 0f)
+        {
+            if (!condition || Shots.Contains(name) || _pendingSnap != null) return;
+            Shots.Add(name);
+            Snap(name);
+            _closeSize = size;
+            _closeOffset = new Vector2(0f, up);
+        }
+
         static void Snap(string name)
         {
+            _closeSize = 0f;
             var g = Object.FindAnyObjectByType<GameRoot>();
             var panel = g.GetComponent<UIDocument>().panelSettings;
             _uiRt = new RenderTexture(SnapW, SnapH, 24, RenderTextureFormat.ARGB32);
@@ -316,10 +345,20 @@ namespace StickmanJumper.EditorTools
                 var cam = Camera.main;
                 var camRt = RenderTexture.GetTemporary(SnapW, SnapH, 24);
                 var prev = cam.targetTexture;
+                var prevPos = cam.transform.position;
+                float prevSize = cam.orthographicSize;
+                if (_closeSize > 0f)
+                {
+                    var c = g.Stickman.Center + _closeOffset;
+                    cam.transform.position = new Vector3(c.x, c.y, prevPos.z);
+                    cam.orthographicSize = _closeSize;
+                }
                 cam.targetTexture = camRt;
                 cam.Render();
                 cam.Render(); // first offscreen render after a big move can use stale GPU-driven culling data
                 cam.targetTexture = prev;
+                cam.transform.position = prevPos;
+                cam.orthographicSize = prevSize;
 
                 var scene = Read(camRt);
                 var ui = Read(_uiRt);

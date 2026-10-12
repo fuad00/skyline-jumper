@@ -13,7 +13,7 @@
 - Импорт только через `PlaceholderImporter` (меню Stickman Jumper → Import Placeholders); он же пишет таблицу в `reference/PLACEHOLDER_ASSETS.md`.
 - `PlaceholderGuard` валит любую сборку, пока сцены ссылаются на заглушки; тест категории `ReleaseGuard` красный — так задумано.
   Исключение (решено 2026-10-12): Development-сборка с «INTERNAL-TEST» в имени файла — только для своего телефона (`BuildTools.BuildAndroidTest`, файл в `Builds/`, в .gitignore).
-- Имена классов/методов и строки из `.so` оригинала читать можно (разрешено 2026-10-12), код не копируем. Уровни `.landscape` и анимации `.character` зашифрованы — не вскрываем. Эталон внешнего вида — видео оригинала (см. `reference/ORIGINAL_MECHANICS.md`). Бренд Djinnworks не использовать.
+- Имена классов/методов и строки из `.so` оригинала читать можно (разрешено 2026-10-12), код не копируем. Уровни `.landscape` и анимации `.character` в оригинале зашифрованы — сами не вскрываем. Владелец дал расшифрованные XML (2026-10-12): `reference/decoded/` (characters/, levels/). Анимации персонажа импортирует `CharacterImporter` (вызывается из Import Placeholders) → `Assets/_ThirdPartyPlaceholder/Character/` — это тоже заглушки. Формат: кости-дерево, позиция от опоры родителя в px (Y вверх), поворот в градусах ПРОТИВ часовой, anchor от левого нижнего угла картинки; рост стойки 83 px = 1.9 м. Превью: `reference/anim/index.html`. Эталон внешнего вида — видео оригинала (см. `reference/ORIGINAL_MECHANICS.md`). Бренд Djinnworks не использовать.
 - Никаких скриншотов/роликов с заглушками наружу.
 
 ## Unity

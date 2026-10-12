@@ -54,6 +54,14 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 5cd727b36af664eeba2aaf19d355021b, type: 3}
   - {fileID: 21300000, guid: 9a2ab39b0d241401ea84e6d92218cca1, type: 3}
   CanopyOpen: {fileID: 21300000, guid: 6e158d50b3a8d4735b3e191ba81aad50, type: 3}
+  AnimStand: {fileID: 11400000, guid: 801505af74adb4e05af119e50705404c, type: 2}
+  AnimWalk: {fileID: 11400000, guid: 3bcc561f8812b4f65a8491fda93a6658, type: 2}
+  AnimRun: {fileID: 11400000, guid: d51c37fe343bb43259064149a7062400, type: 2}
+  AnimJump: {fileID: 11400000, guid: 32925a137522b4500877997c00f41ce4, type: 2}
+  AnimParachute: {fileID: 11400000, guid: 97305f9303160460f8f0bd82e6a397b9, type: 2}
+  AnimFastLanding: {fileID: 11400000, guid: a1e7336a85fe74407bdabb2a8279a8e8, type: 2}
+  AnimWins: {fileID: 11400000, guid: 85d1e695d4acf4f4fae3325f1b2b4429, type: 2}
+  AnimLoose: {fileID: 11400000, guid: 89d59eb86080b4033886c02e3f3269be, type: 2}
   Flag: {fileID: 21300000, guid: e4b61a9c5acbb4072a910f933bd179f2, type: 3}
   FlagLast: {fileID: 21300000, guid: dbcbe227426e94a5fb92d254ce8c808c, type: 3}
   Digits:

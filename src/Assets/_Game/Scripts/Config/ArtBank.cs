@@ -52,6 +52,27 @@ namespace StickmanJumper.Config
         [Tooltip("Держатель строп над головой (стропы сходятся в его верх).")]
         public Sprite CanopyOpen;
 
+        [Header("Анимации стикмена (из оригинала, заглушки; пусто — простой стикмен из палочек)")]
+        [Tooltip("Стоит на крыше.")]
+        public Presentation.CharacterClip AnimStand;
+        [Tooltip("Идёт (пятится от края — та же ходьба, развёрнутая спиной к краю).")]
+        public Presentation.CharacterClip AnimWalk;
+        public Presentation.CharacterClip AnimRun;
+        [Tooltip("Толчок с края и вытягивание в нырок.")]
+        public Presentation.CharacterClip AnimJump;
+        [Tooltip("Висит под куполом (купол со стропами — часть анимации).")]
+        public Presentation.CharacterClip AnimParachute;
+        [Tooltip("Хватается за голову (время вышло).")]
+        public Presentation.CharacterClip AnimFastLanding;
+        [Tooltip("Сел на флажок: купол опадает, радуется.")]
+        public Presentation.CharacterClip AnimWins;
+        [Tooltip("Сел мимо: купол опадает, грустит.")]
+        public Presentation.CharacterClip AnimLoose;
+
+        public bool HasCharacter => AnimStand != null && AnimWalk != null && AnimRun != null && AnimJump != null && AnimParachute != null;
+
+        public Presentation.CharacterClip[] CharacterClips => new[] { AnimStand, AnimWalk, AnimRun, AnimJump, AnimParachute, AnimFastLanding, AnimWins, AnimLoose };
+
         [Header("Флажки и линейка")]
         [Tooltip("Красный флажок цели (опора спрайта — низ древка).")]
         public Sprite Flag;

@@ -8,9 +8,10 @@ using UnityEngine;
 namespace StickmanJumper.Presentation
 {
     /// <summary>
-    /// Стикмен из капсул (своя графика) с головой-спрайтом. Пока жив — позу считает код (ходьба и бег через IK ног,
-    /// остальное — позами), смотрит туда, куда идёт: пятится от края — разворачивается спиной к нему, бежит — лицом.
-    /// При ударе каждая кость получает Rigidbody2D и шарнир — дальше честный ragdoll на физике Unity.
+    /// Стикмен. Если в ArtBank есть анимации оригинала — это <see cref="CharacterRig"/>: картинки частей тела и анимации
+    /// из файлов оригинала (стойка, ходьба, бег, прыжок, купол, посадка). Иначе — простой стикмен из капсул, позу
+    /// которого считает код (ходьба и бег через IK ног). Смотрит туда, куда идёт: пятится от края — спиной к нему.
+    /// При ударе части тела получают Rigidbody2D и шарниры — дальше честный ragdoll на физике Unity.
     /// </summary>
     public sealed class StickmanView
     {
@@ -34,6 +35,10 @@ namespace StickmanJumper.Presentation
         readonly Transform _root;
         readonly Bone[] _bones = new Bone[(int)B.Count];
         readonly CanopyView _canopy;
+        readonly CharacterRig _rig;
+        Rigidbody2D _torso;
+        float _spin;
+        JumpPhase _phaseBefore = JumpPhase.Ready;
         SpriteRenderer _headRenderer;
         readonly List<SpriteRenderer> _backShapes = new List<SpriteRenderer>();
         bool _frontView;
@@ -49,16 +54,44 @@ namespace StickmanJumper.Presentation
         public float Facing => _facing;
 
         /// <summary>Где сейчас середина тела (для камеры после удара).</summary>
-        public Vector2 Center => _ragdoll ? (Vector2)_bones[(int)B.Torso].T.position : (Vector2)_root.position + Vector2.up * (_cfg.UpperLegLength + _cfg.LowerLegLength);
+        public Vector2 Center
+        {
+            get
+            {
+                if (_rig != null) return _torso != null ? _torso.position : (Vector2)_root.position + Vector2.up * CharacterRig.PivotHeight;
+                return _ragdoll ? (Vector2)_bones[(int)B.Torso].T.position : (Vector2)_root.position + Vector2.up * (_cfg.UpperLegLength + _cfg.LowerLegLength);
+            }
+        }
 
         /// <summary>Скорость тела в ragdoll, м/с.</summary>
-        public float RagdollSpeed => _ragdoll && _bones[(int)B.Torso].Body != null ? _bones[(int)B.Torso].Body.linearVelocity.magnitude : 0f;
+        public float RagdollSpeed
+        {
+            get
+            {
+                if (_rig != null) return _torso != null ? _torso.linearVelocity.magnitude : 0f;
+                return _ragdoll && _bones[(int)B.Torso].Body != null ? _bones[(int)B.Torso].Body.linearVelocity.magnitude : 0f;
+            }
+        }
+
+        /// <summary>Какая анимация оригинала сейчас играет (null — простой стикмен). Для автотеста.</summary>
+        public CharacterClip Clip => _rig?.Clip;
 
         public StickmanView(Transform parent, StickmanConfig cfg, ArtBank art)
         {
             _cfg = cfg;
             _art = art;
             _kit = new SpriteKit(art.SpriteMaterial, art.White);
+            if (art.HasCharacter)
+            {
+                // Original pictures and animations: scale the stand pose to the configured height.
+                float metersPerPixel = cfg.Height / Mathf.Max(1f, art.AnimStand.Height);
+                _rig = new CharacterRig(parent, art.CharacterClips, metersPerPixel, art.SpriteMaterial, SortOrder.StickmanBack);
+                _root = _rig.Root;
+                _rig.Play(art.AnimStand, true);
+                _rig.SetPlacement(Vector2.zero, 1f, 0f);
+                _rig.Apply();
+                return;
+            }
             _root = new GameObject("Stickman").transform;
             _root.SetParent(parent, false);
 
@@ -82,6 +115,11 @@ namespace StickmanJumper.Presentation
 
         public void Destroy()
         {
+            if (_rig != null)
+            {
+                _rig.Destroy();
+                return;
+            }
             _canopy.Destroy();
             if (_root != null) UnityEngine.Object.Destroy(_root.gameObject);
         }
@@ -131,6 +169,7 @@ namespace StickmanJumper.Presentation
             _time += dt;
             if (s.Phase != _lastPhase)
             {
+                _phaseBefore = _lastPhase;
                 _lastPhase = s.Phase;
                 _phaseTime = 0f;
             }
@@ -138,6 +177,11 @@ namespace StickmanJumper.Presentation
 
             // Walking back he turns his back to the edge; otherwise he faces the jump direction (instant flip, like the original).
             _facing = s.Phase == JumpPhase.BackingUp || s.Phase == JumpPhase.AtBackWall ? -1f : 1f;
+            if (_rig != null)
+            {
+                UpdateRig(s, dt);
+                return;
+            }
 
             var target = TargetPose(s, dt, out float sharpness);
             float k = 1f - Mathf.Exp(-sharpness * dt);
@@ -145,6 +189,72 @@ namespace StickmanJumper.Presentation
             _root.position = new Vector3(s.Feet.x, s.Feet.y, 0f);
             ApplyPose();
             _canopy.UpdateAttached(s, ShoulderWorld(), _facing * _pose.Body, _time, dt);
+        }
+
+        /// <summary>Анимации оригинала по фазе прыжка + поворот всей фигуры (нырок по траектории, качание под куполом).</summary>
+        void UpdateRig(JumpSession s, float dt)
+        {
+            float speed = Mathf.Abs(s.Velocity.x);
+            float rate = 1f, targetSpin = 0f, spinSharpness = 12f, open = 1f;
+            bool canopy = false;
+            switch (s.Phase)
+            {
+                case JumpPhase.BackingUp:
+                    _rig.Play(_art.AnimWalk, true);
+                    rate = speed / Mathf.Max(0.1f, _cfg.WalkClipSpeed); // feet do not slide
+                    break;
+                case JumpPhase.Running:
+                    _rig.Play(_art.AnimRun, true);
+                    rate = Mathf.Clamp(speed / Mathf.Max(0.1f, _cfg.RunClipSpeed), 0.6f, _cfg.RunClipMaxRate);
+                    break;
+                case JumpPhase.Airborne when s.CanopyDeployed:
+                    _rig.Play(_art.AnimParachute, true);
+                    canopy = true;
+                    open = s.Canopy;
+                    // Swings under the canopy: leans against the drift, plus a slow sway.
+                    targetSpin = Mathf.Clamp(-(s.Velocity.x - s.Level.Wind) * 2.5f, -16f, 16f) + Mathf.Sin(_time * 1.3f) * 4f;
+                    spinSharpness = 4f;
+                    break;
+                case JumpPhase.Airborne:
+                    // Push-off, then the whole straight body follows the flight path: first flat, then head down.
+                    _rig.Play(_art.AnimJump, false);
+                    float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(_phaseTime / Mathf.Max(0.05f, _art.AnimJump.Duration)));
+                    targetSpin = Mathf.Lerp(0f, DiveAngle(s.Velocity), k);
+                    spinSharpness = 30f;
+                    break;
+                case JumpPhase.Landed:
+                    _rig.Play(Or(s.LandedOnTarget ? _art.AnimWins : _art.AnimLoose, _art.AnimStand), false);
+                    canopy = s.CanopyDeployed;
+                    break;
+                case JumpPhase.TimeUp:
+                    if (s.CanopyDeployed)
+                    {
+                        _rig.Play(_art.AnimParachute, true);
+                        canopy = true;
+                        open = s.Canopy;
+                    }
+                    else if (_phaseBefore == JumpPhase.Airborne) targetSpin = _spin; // frozen mid-dive
+                    else _rig.Play(Or(_art.AnimFastLanding, _art.AnimStand), true); // hands on the head: time is up
+                    break;
+                default: // Ready, AtBackWall
+                    _rig.Play(_art.AnimStand, true);
+                    break;
+            }
+            _spin = Mathf.LerpAngle(_spin, targetSpin, 1f - Mathf.Exp(-spinSharpness * dt));
+            _rig.Advance(dt, rate);
+            _rig.SetCanopy(canopy, open);
+            _rig.SetPlacement(s.Feet, _facing, _spin);
+            _rig.Apply();
+        }
+
+        static CharacterClip Or(CharacterClip clip, CharacterClip fallback) => clip != null ? clip : fallback;
+
+        /// <summary>Наклон прямой фигуры по скорости (лицом вправо): вверх-вперёд −60°, горизонтально −90°, вниз −180°.</summary>
+        static float DiveAngle(Vector2 v)
+        {
+            if (v.sqrMagnitude < 0.01f) return 0f;
+            float a = Mathf.Atan2(v.y, Mathf.Abs(v.x)) * Mathf.Rad2Deg - 90f;
+            return Mathf.Clamp(a, -179f, 0f);
         }
 
         StickmanPose TargetPose(JumpSession s, float dt, out float sharpness)
@@ -255,6 +365,12 @@ namespace StickmanJumper.Presentation
         {
             if (_ragdoll) return;
             _ragdoll = true;
+            if (_rig != null)
+            {
+                _rig.DetachCanopy(_root.parent, velocity);
+                _torso = _rig.BecomeRagdoll(_root.parent, velocity, seed, _cfg.Mass, _cfg.CrashSpin, speed => RagdollImpact?.Invoke(speed));
+                return;
+            }
             _canopy.Detach(velocity);
             var rng = new System.Random(seed);
             var mat = new PhysicsMaterial2D("Stickman") { friction = 0.6f, bounciness = 0.2f };
@@ -354,7 +470,11 @@ namespace StickmanJumper.Presentation
         }
 
         /// <summary>Отделившийся купол продолжает падать сам.</summary>
-        public void UpdateDetached(float dt) => _canopy.UpdateDetached(dt);
+        public void UpdateDetached(float dt)
+        {
+            if (_rig != null) _rig.UpdateDetached(dt);
+            else _canopy.UpdateDetached(dt);
+        }
     }
 
     /// <summary>Шлёт событие, когда часть ragdoll сильно обо что-то ударилась.</summary>

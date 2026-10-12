@@ -408,7 +408,8 @@ namespace StickmanJumper
             float now = Time.unscaledTime;
             if (_finishedAtReal < 0f) _finishedAtReal = now;
 
-            float wait = _session.Phase == JumpPhase.Landed ? 1.3f : _session.Phase == JumpPhase.TimeUp ? 0.6f : 4f;
+            // After a landing give the original's animation time: the canopy drops, then he cheers (or sulks).
+            float wait = _session.Phase == JumpPhase.Landed ? 2.2f : _session.Phase == JumpPhase.TimeUp ? 0.6f : 4f;
             if (_stickman.IsRagdoll)
             {
                 // Show the result once the body has settled (or after 4 s anyway).

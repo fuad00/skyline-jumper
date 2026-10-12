@@ -191,6 +191,7 @@ namespace StickmanJumper.EditorTools
             foreach (var item in Sprites) ConfigureSprite($"{SpritesFolder}/{item.Name}.png", item);
             foreach (var (source, _) in Sounds) ConfigureAudio($"{AudioFolder}/{source}", source == "soundtrack.ogg" || source == "windhowl.ogg");
             AssetDatabase.SaveAssets();
+            CharacterImporter.Run(src); // body parts + animations of the original stickman
             WriteLedger();
             Debug.Log($"[Placeholders] imported {Sprites.Length} sprites and {Sounds.Length} sounds into {Folder}");
             return true;
@@ -317,8 +318,11 @@ namespace StickmanJumper.EditorTools
                 sb.AppendLine($"| `{(i.Atlas != null ? i.Atlas + ".png → " : "")}{i.Source}` | `src/{SpritesFolder}/{i.Name}.png` | {i.Usage} |");
             foreach (var (source, usage) in Sounds)
                 sb.AppendLine($"| `{source}` | `src/{AudioFolder}/{source}` | {usage} |");
+            foreach (var (source, file, usage) in CharacterImporter.LedgerRows)
+                sb.AppendLine($"| `{source}` | `src/{file}` | {usage} |");
             sb.AppendLine();
-            sb.AppendLine($"Итого: {Sprites.Length} картинок, {Sounds.Length} звуков. Всё это перерисовать/переозвучить до релиза.");
+            sb.AppendLine($"Итого: {Sprites.Length} картинок, {Sounds.Length} звуков, {CharacterImporter.LedgerRows.Count} файлов персонажа (части тела и анимации). " +
+                          "Всё это перерисовать/переозвучить/переанимировать до релиза.");
             sb.AppendLine(LedgerEnd);
 
             string text = File.ReadAllText(path);

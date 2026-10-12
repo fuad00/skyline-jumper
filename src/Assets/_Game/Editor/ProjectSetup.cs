@@ -242,6 +242,15 @@ namespace StickmanJumper.EditorTools
             art.Bushes = LoadAll("bush01", "bush02", "bush03", "bush04");
             art.Lamp = PlaceholderImporter.LoadSprite("streetlamp");
             art.Hydrant = PlaceholderImporter.LoadSprite("hydrant");
+            // The original stickman's animations (placeholders). Missing → the simple stick figure.
+            art.AnimStand = CharacterImporter.LoadClip("stuntmanStand");
+            art.AnimWalk = CharacterImporter.LoadClip("stuntmanWalk");
+            art.AnimRun = CharacterImporter.LoadClip("stuntmanRun");
+            art.AnimJump = CharacterImporter.LoadClip("stuntmanJump");
+            art.AnimParachute = CharacterImporter.LoadClip("stuntmanParachute");
+            art.AnimFastLanding = CharacterImporter.LoadClip("stuntmanFastLanding");
+            art.AnimWins = CharacterImporter.LoadClip("stuntmanWins");
+            art.AnimLoose = CharacterImporter.LoadClip("stuntmanLoose");
             EditorUtility.SetDirty(art);
         }
 
