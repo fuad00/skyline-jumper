@@ -1,0 +1,65 @@
+# ============================================================
+# КАРАНТИН ЧУЖИХ АССЕТОВ — никогда не попадает в git
+# ============================================================
+# Оригинальные .ipa/.apk и всё, что из них извлечено
+/reference/
+# Чужие файлы внутри Unity-проекта (временные заглушки)
+**/Assets/_ThirdPartyPlaceholder/
+**/Assets/_ThirdPartyPlaceholder.meta
+# Сами архивы приложений, где бы они ни лежали
+*.ipa
+*.apk
+*.aab
+
+# === Unity (проект в src/) ===
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+*.csproj
+*.unityproj
+*.sln
+*.slnx
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+crashlytics-buildid.txt
+sysinfo.txt
+src/.vscode/
+
+# Скриншоты автотестов (генерируются заново при каждом прогоне)
+/screenshots/
+
+# === IDE / ОС ===
+.vs/
+.idea/
+.vscode/settings.json
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# === Claude Code (локальное) ===
+.claude/settings.local.json
+CLAUDE.local.md
+
+# === Секреты ===
+.env
+.env.*
+*.keystore
+*.jks
+*.pem
+*.key
