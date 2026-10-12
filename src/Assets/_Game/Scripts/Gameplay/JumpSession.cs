@@ -122,8 +122,8 @@ namespace StickmanJumper.Gameplay
                     Raise(JumpEvent.StartedRunning);
                     break;
                 case JumpPhase.Running:
-                    if (Velocity.x < _jump.JumpSpeedGate) break; // like the original: too slow to jump yet
-                    Velocity = new Vector2(Velocity.x * _jump.JumpHorizontalMultiplier, _jump.JumpUpSpeed);
+                    // A short run-up still jumps (quick taps must work): below the gate the push-off uses the gate speed.
+                    Velocity = new Vector2(Mathf.Max(Velocity.x, _jump.JumpSpeedGate) * _jump.JumpHorizontalMultiplier, _jump.JumpUpSpeed);
                     TakeoffX = Feet.x;
                     Phase = JumpPhase.Airborne;
                     Raise(JumpEvent.Jumped);
@@ -247,7 +247,9 @@ namespace StickmanJumper.Gameplay
 
             Feet += delta * hit.T;
             ContactNormal = hit.Normal;
-            switch (LandingJudge.Judge(hit.Normal, Velocity, _flight, CanopyDeployed))
+            // With the canopy cut away he tumbles (ragdoll already): whatever he hits now, it is a crash.
+            var contact = CanopyCut ? ContactResult.Crash : LandingJudge.Judge(hit.Normal, Velocity, _flight, CanopyDeployed);
+            switch (contact)
             {
                 case ContactResult.Landed:
                     ImpactVelocity = Velocity;

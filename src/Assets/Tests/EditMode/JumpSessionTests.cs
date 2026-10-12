@@ -52,11 +52,12 @@ namespace StickmanJumper.Tests
             Assert.Greater(TakeoffSpeed(6f), TakeoffSpeed(3.2f) + 1f);
         }
 
-        /// <summary>Как в оригинале: слишком короткий разбег — скорости не хватает на прыжок, тап у края не помогает.</summary>
+        /// <summary>Быстрые тапы тоже работают: с очень короткого разбега прыгает хотя бы с наименьшей скоростью толчка.</summary>
         [Test]
-        public void TooShortRunUp_CannotJump()
+        public void ShortRunUp_StillJumps()
         {
-            Assert.IsNaN(TakeoffSpeed(1.5f));
+            var jump = TestKit.Jump();
+            Assert.AreEqual(jump.JumpSpeedGate * jump.JumpHorizontalMultiplier, TakeoffSpeed(0.5f), 0.01f);
         }
 
         /// <summary>Скорость по X сразу после толчка (NaN — так и не прыгнул).</summary>

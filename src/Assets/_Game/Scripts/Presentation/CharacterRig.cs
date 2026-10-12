@@ -191,7 +191,7 @@ namespace StickmanJumper.Presentation
             _looseCanopy = para.T;
             _looseCanopy.SetParent(world, true);
             _looseRenderers = _looseCanopy.GetComponentsInChildren<SpriteRenderer>();
-            _looseVelocity = new Vector2(velocity.x * 0.4f, Mathf.Max(velocity.y * 0.2f, 1.5f));
+            _looseVelocity = new Vector2(velocity.x * 0.4f, Mathf.Max(velocity.y * 0.2f, 3f)); // pulled up and away from him
             _looseSpin = Mathf.Sign(velocity.x == 0f ? 1f : velocity.x) * -12f;
             _looseAge = 0f;
         }

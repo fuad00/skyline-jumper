@@ -60,6 +60,20 @@ namespace StickmanJumper.UI
         readonly VisualElement _dialog, _dialogBar;
         readonly Label _dialogTitle, _dialogText;
         readonly VisualElement _minimap, _windFill, _windArrow, _stageCards, _levelGrid, _levelBadge, _summaryFace;
+
+        /// <summary>Шаг ленты этапов: ширина карточки + промежуток (как в USS: 620 + 2 × 30).</summary>
+        const float StageCardStep = 680f;
+        readonly List<StageCardView> _stageViews = new List<StageCardView>();
+        readonly List<VisualElement> _stageCardEls = new List<VisualElement>();
+        VisualElement _stageTrack;
+        int _stageFocus, _downCard = -1;
+        float _trackX, _trackTime, _dragStartPointer, _dragStartTrack, _dragMoved;
+        bool _dragging, _trackSnap;
+        float _trackVelocity;
+        /// <summary>За сколько секунд лента в основном доезжает до нужной карточки.</summary>
+        const float StageSlideTime = 0.18f;
+        /// <summary>Размер соседних карточек относительно центральной.</summary>
+        const float StageSideScale = 0.8f;
         readonly Label _time, _hint;
         readonly VisualElement _hintBox;
         readonly ClockDial _clock;
@@ -107,6 +121,12 @@ namespace StickmanJumper.UI
             _windFill = root.Q<VisualElement>("wind-fill");
             _windArrow = root.Q<VisualElement>("wind-arrow");
             _stageCards = root.Q<VisualElement>("stage-cards");
+            _stageCards.pickingMode = PickingMode.Position; // swipes anywhere on the strip
+            _stageCards.RegisterCallback<PointerDownEvent>(OnStagePointerDown);
+            _stageCards.RegisterCallback<PointerMoveEvent>(OnStagePointerMove);
+            _stageCards.RegisterCallback<PointerUpEvent>(OnStagePointerUp);
+            _stageCards.RegisterCallback<PointerCancelEvent>(_ => _dragging = false);
+            _stageCards.schedule.Execute(AnimateStageTrack).Every(16);
             _levelGrid = root.Q<VisualElement>("level-grid");
             _levelBadge = root.Q<VisualElement>("level-badge");
             _summaryFace = root.Q<VisualElement>("summary-face");
@@ -322,17 +342,27 @@ namespace StickmanJumper.UI
             Display(_pauseOverlay, show);
         }
 
-        /// <summary>Экран «Выбери этап»: карточки этапов.</summary>
-        public void SetStages(IReadOnlyList<StageCardView> stages)
+        /// <summary>
+        /// Экран «Выбери этап» как в оригинале: лента карточек, выбранная — по центру, соседние выглядывают по краям.
+        /// Листается свайпом или тапом по соседней карточке; тап по центральной — открыть этап. Лента едет плавно
+        /// (пружина без раскачки), а карточка растёт по мере приближения к центру.
+        /// </summary>
+        public void SetStages(IReadOnlyList<StageCardView> stages, int focus = 0)
         {
             _stageCards.Clear();
+            _stageCardEls.Clear();
+            _stageViews.Clear();
+            _stageViews.AddRange(stages);
+            _stageTrack = new VisualElement { pickingMode = PickingMode.Ignore };
+            _stageTrack.AddToClassList("stage-track");
+            _stageCards.Add(_stageTrack);
             for (int i = 0; i < stages.Count; i++)
             {
                 var v = stages[i];
-                int index = i;
                 var card = new VisualElement();
                 card.AddToClassList("stage-card");
                 card.AddToClassList("clickable");
+                card.userData = i;
                 Plate.Dress(card, Plate.Kind.LightShadow, 34f, 6f, UIShapes.Blue);
                 var head = StageHead(v);
                 head.AddToClassList("stage-head");
@@ -358,12 +388,115 @@ namespace StickmanJumper.UI
                     lockLayer.Add(Text(UIText.StarsNeeded(v.NeedStars), "lock-text"));
                     card.Add(lockLayer);
                 }
-                else if (!v.Empty)
-                {
-                    card.RegisterCallback<ClickEvent>(_ => StageClicked?.Invoke(index));
-                }
-                _stageCards.Add(card);
+                _stageTrack.Add(card);
+                _stageCardEls.Add(card);
             }
+
+            _stageFocus = Mathf.Clamp(focus, 0, Mathf.Max(0, stages.Count - 1));
+            _trackSnap = true; // jump straight to the focused card, no slide
+            _trackVelocity = 0f;
+            // Place and size the cards right away (the screen width is known), so the first frame is already right —
+            // otherwise the strip flashes at its left edge for a frame and jumps (seen when coming back from the levels).
+            _trackTime = Time.realtimeSinceStartup;
+            LayoutStageTrack(snap: true);
+        }
+
+        /// <summary>Какая карточка этапа сейчас по центру.</summary>
+        public int StageFocus => _stageFocus;
+
+        /// <summary>Пролистать ленту этапов к карточке (плавно).</summary>
+        public void FocusStage(int index)
+        {
+            if (_stageViews.Count == 0) return;
+            _stageFocus = Mathf.Clamp(index, 0, _stageViews.Count - 1);
+        }
+
+        /// <summary>Ширина ленты: во весь экран (берём у корня — он виден всегда, а лента бывает скрыта).</summary>
+        float StripWidth => _root.resolvedStyle.width;
+
+        /// <summary>Сдвиг ленты, при котором карточка index стоит по центру.</summary>
+        float TrackXFor(int index) => StripWidth * 0.5f - (StageCardStep * index + StageCardStep * 0.5f);
+
+        void AnimateStageTrack()
+        {
+            if (_stageTrack == null || Screen != UIScreen.StageSelect) return;
+            LayoutStageTrack(snap: false);
+        }
+
+        void LayoutStageTrack(bool snap)
+        {
+            if (_stageTrack == null || !(StripWidth > 1f)) return; // not laid out yet
+            float now = Time.realtimeSinceStartup;
+            float dt = Mathf.Clamp(now - _trackTime, 0f, 0.1f);
+            _trackTime = now;
+            if (!_dragging)
+            {
+                float target = TrackXFor(_stageFocus);
+                if (snap || _trackSnap) { _trackX = target; _trackVelocity = 0f; }
+                else if (dt > 0f) _trackX = Mathf.SmoothDamp(_trackX, target, ref _trackVelocity, StageSlideTime, Mathf.Infinity, dt);
+                _trackSnap = false;
+            }
+            _stageTrack.style.translate = new Translate(_trackX, 0f);
+
+            // The nearer a card is to the centre, the bigger and brighter it is — continuously, also while dragging.
+            float centre = StripWidth * 0.5f;
+            for (int i = 0; i < _stageCardEls.Count; i++)
+            {
+                float cardCentre = _trackX + StageCardStep * i + StageCardStep * 0.5f;
+                float d = Mathf.Clamp01(Mathf.Abs(cardCentre - centre) / StageCardStep);
+                float k = d * d * (3f - 2f * d);
+                float scale = Mathf.Lerp(1f, StageSideScale, k);
+                var card = _stageCardEls[i];
+                card.style.scale = new Scale(new Vector3(scale, scale, 1f));
+                card.style.opacity = Mathf.Lerp(1f, 0.7f, k);
+            }
+        }
+
+        void OnStagePointerDown(PointerDownEvent e)
+        {
+            if (_stageViews.Count == 0) return;
+            _dragging = true;
+            _dragMoved = 0f;
+            _dragStartPointer = e.position.x;
+            _dragStartTrack = _trackX;
+            _trackVelocity = 0f;
+            _downCard = CardIndexOf(e.target as VisualElement);
+            _stageCards.CapturePointer(e.pointerId);
+        }
+
+        void OnStagePointerMove(PointerMoveEvent e)
+        {
+            if (!_dragging || !_stageCards.HasPointerCapture(e.pointerId)) return;
+            float dx = e.position.x - _dragStartPointer;
+            _dragMoved = Mathf.Max(_dragMoved, Mathf.Abs(dx));
+            _trackX = _dragStartTrack + dx;
+        }
+
+        void OnStagePointerUp(PointerUpEvent e)
+        {
+            if (!_dragging) return;
+            _dragging = false;
+            if (_stageCards.HasPointerCapture(e.pointerId)) _stageCards.ReleasePointer(e.pointerId);
+            if (_dragMoved < 20f)
+            {
+                // A tap: the centred card opens its stage, a side card slides to the centre.
+                if (_downCard < 0) return;
+                if (_downCard != _stageFocus) FocusStage(_downCard);
+                else if (!_stageViews[_downCard].Locked && !_stageViews[_downCard].Empty) StageClicked?.Invoke(_downCard);
+                return;
+            }
+            // A swipe: the nearest card, and a short flick still turns at least one card.
+            float dx = e.position.x - _dragStartPointer;
+            int nearest = Mathf.RoundToInt((StripWidth * 0.5f - _trackX) / StageCardStep - 0.5f);
+            if (nearest == _stageFocus && Mathf.Abs(dx) > 60f) nearest -= (int)Mathf.Sign(dx);
+            FocusStage(nearest);
+        }
+
+        int CardIndexOf(VisualElement e)
+        {
+            for (; e != null && e != _stageCards; e = e.parent)
+                if (e.userData is int i && e.ClassListContains("stage-card")) return i;
+            return -1;
         }
 
         /// <summary>Логотип этапа как в оригинале: крупная цифра, «этап», название и подпись, силуэт города внизу.</summary>

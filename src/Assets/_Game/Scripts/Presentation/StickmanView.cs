@@ -361,12 +361,16 @@ namespace StickmanJumper.Presentation
 
         // ------------------------------------------------------------------ ragdoll
 
-        /// <summary>Тап под куполом: купол отрывается и улетает, стикмен снова в свободном падении.</summary>
-        public void CutCanopy(Vector2 velocity)
+        /// <summary>
+        /// Тап под куполом: купол отрывается и улетает, а стикмен дальше падает кувырком, болтая руками и ногами
+        /// (как сорвавшийся с края), — ragdoll сразу, не дожидаясь удара.
+        /// </summary>
+        public void CutCanopy(Vector2 velocity, int seed)
         {
             if (_ragdoll) return;
             if (_rig != null) _rig.DetachCanopy(_root.parent, velocity);
             else _canopy.Detach(velocity);
+            BecomeRagdoll(velocity, seed);
         }
 
         /// <summary>Дальше тело падает само. velocity — скорость в момент удара/срыва.</summary>

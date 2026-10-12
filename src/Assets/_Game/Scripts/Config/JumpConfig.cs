@@ -28,7 +28,7 @@ namespace StickmanJumper.Config
         public float JumpUpSpeed = 11.36f;
         [Tooltip("Скорость по X при толчке = скорость бега × это (оригинал: 2) — отсюда дальние полёты.")]
         public float JumpHorizontalMultiplier = 2f;
-        [Tooltip("Прыгнуть можно, только разогнавшись хотя бы до этого, м/с (оригинал: 205 px/с). Раньше тап не считается.")]
+        [Tooltip("Наименьшая скорость толчка, м/с (оригинал: 205 px/с): даже с очень короткого разбега прыгает хотя бы так (×2 по X).")]
         public float JumpSpeedGate = 4.66f;
         [Tooltip("Проспал край: насколько ступни могут выйти за край, прежде чем он сорвётся, м.")]
         public float EdgeOverrun = 0.15f;

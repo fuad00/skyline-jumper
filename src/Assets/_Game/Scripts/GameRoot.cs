@@ -170,7 +170,7 @@ namespace StickmanJumper
             EnterMenu();
             var cards = new List<StageCardView>();
             for (int s = 0; s < _catalog.Stages.Length; s++) cards.Add(StageCard(s));
-            _ui.SetStages(cards);
+            _ui.SetStages(cards, Mathf.Max(0, _stage)); // back from a stage's levels: that stage stays in the centre
             _ui.Show(UIScreen.StageSelect);
         }
 
@@ -353,6 +353,11 @@ namespace StickmanJumper
             bool esc = kb.escapeKey.wasPressedThisFrame || kb.pKey.wasPressedThisFrame;
             if (!_playing)
             {
+                if (_ui.Screen == UIScreen.StageSelect && !_ui.DialogVisible)
+                {
+                    if (kb.leftArrowKey.wasPressedThisFrame) _ui.FocusStage(_ui.StageFocus - 1);
+                    if (kb.rightArrowKey.wasPressedThisFrame) _ui.FocusStage(_ui.StageFocus + 1);
+                }
                 // Esc / the phone's back button: close the dialog, or go one screen back.
                 if (kb.escapeKey.wasPressedThisFrame && (_ui.DialogVisible || _ui.Screen != UIScreen.MainMenu)) Back();
                 return;
@@ -373,7 +378,7 @@ namespace StickmanJumper
                     _cameraRig.Overview = false;
                     break;
                 case JumpEvent.CanopyCut:
-                    _stickman.CutCanopy(_session.Velocity);
+                    _stickman.CutCanopy(_session.Velocity, _runIndex);
                     break;
                 case JumpEvent.Stumbled:
                 case JumpEvent.Crashed:

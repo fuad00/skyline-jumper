@@ -300,11 +300,19 @@
 
 .stage-cards {
     position: absolute;
-    left: 60px;
-    right: 60px;
-    top: 250px;
+    left: 0;
+    right: 0;
+    top: 230px;
+    height: 540px;
+    overflow: hidden;
+}
+
+/* the strip of all stage cards; GameUI slides it so the chosen card is centred (step 680 px = card + margins) */
+.stage-track {
+    position: absolute;
+    left: 0;
+    top: 20px;
     flex-direction: row;
-    justify-content: center;
 }
 
 .stage-card {
@@ -312,6 +320,8 @@
     height: 500px;
     margin: 0 30px;
     padding: 13px;
+    flex-shrink: 0;
+    transform-origin: center;
 }
 
 .stage-head {

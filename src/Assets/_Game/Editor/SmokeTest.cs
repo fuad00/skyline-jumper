@@ -69,6 +69,7 @@ namespace StickmanJumper.EditorTools
             Application.runInBackground = true;
             _levelShot = 0;
             _tourStep = 0;
+            _runDStep = 0;
             _peak = 0f;
 
             var violations = PlaceholderGuard.FindViolations();
@@ -121,7 +122,19 @@ namespace StickmanJumper.EditorTools
                     Next();
                     break;
                 case 10:
-                    if (Wait(0.6)) { Snap("01_stage_select"); Next(); }
+                    if (!Shots.Contains("01_stage_select"))
+                    {
+                        if (Wait(0.6)) { Shots.Add("01_stage_select"); Snap("01_stage_select"); }
+                        break;
+                    }
+                    if (g.UI.StageFocus != 4)
+                    {
+                        g.UI.FocusStage(4); // the strip slides: stage 5 in the centre, 4 and 6 peek in
+                        _phaseTime = EditorApplication.timeSinceStartup;
+                        Snap("01c_stage_select_moving"); // a few frames into the slide: cards grow/shrink on the way
+                        break;
+                    }
+                    if (Wait(0.8)) { Snap("01b_stage_select_scrolled"); Next(); }
                     break;
                 case 11:
                     g.ShowLevelSelect(0);
@@ -192,10 +205,34 @@ namespace StickmanJumper.EditorTools
                     CloseUp(g.Stickman.IsRagdoll && EditorApplication.timeSinceStartup - Armed["c11"] > 1.5, "c11_stumble_ragdoll", 2.2f);
                     if (g.UI.SummaryVisible) { Report("run C missed edge   ", g, JumpOutcome.Died); Next(); }
                     break;
-                case 22:
-                    g.Autopilot = null;
-                    g.Retry();
-                    Next();
+                case 22: // run D: canopy opens, then a tap cuts it away → he tumbles (ragdoll) and crashes
+                    if (_runDStep == 0)
+                    {
+                        g.Autopilot = new Autopilot { DesiredRunUp = 6f, OpenRightAway = true };
+                        g.Retry();
+                        _runDStep = 1;
+                        break;
+                    }
+                    if (_runDStep == 1)
+                    {
+                        if (s.CanopyDeployed && s.Canopy >= 1f)
+                        {
+                            g.Autopilot = null;
+                            g.Tap();
+                            _runDStep = 2;
+                            Armed["c12"] = EditorApplication.timeSinceStartup;
+                        }
+                        break;
+                    }
+                    CloseUp(g.Stickman.IsRagdoll && EditorApplication.timeSinceStartup - Armed["c12"] > 0.4, "c12_cut_canopy_tumbles", 3f);
+                    if (g.UI.SummaryVisible)
+                    {
+                        if (!g.Stickman.IsRagdoll) Fail("cutting the canopy did not make him a ragdoll");
+                        Report("run D cut canopy    ", g, JumpOutcome.Died);
+                        g.Autopilot = null;
+                        g.Retry();
+                        Next();
+                    }
                     break;
                 case 23: // pause bar
                     if (Wait(0.5)) { g.SetPaused(true); Next(); }
@@ -229,7 +266,7 @@ namespace StickmanJumper.EditorTools
             }
         }
 
-        static int _levelShot, _tourStep;
+        static int _levelShot, _tourStep, _runDStep;
         static float _takeoffAt;
 
         /// <summary>Шаг тура по меню: действие, пауза, снимок. Действие следующего шага — только после снимка.</summary>
