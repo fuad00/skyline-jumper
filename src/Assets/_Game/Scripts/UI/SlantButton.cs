@@ -5,17 +5,20 @@ using UnityEngine.UIElements;
 namespace StickmanJumper.UI
 {
     /// <summary>
-    /// Кнопка нижней панели как в оригинале: скошенный параллелограмм с подписью в две строки («новый / ПРЫЖОК»).
-    /// Соседние кнопки заходят друг на друга скосами; у первой ровный левый край, у последней — правый.
+    /// Кнопка нижней панели как в оригинале: скошенный параллелограмм с объёмом — светлая фаска сверху и слева,
+    /// тёмная тень по правому скосу, между кнопками тёмный зазор подложки. Подпись в две строки («новый / ПРЫЖОК»).
     /// </summary>
     public sealed class SlantButton : Button
     {
-        public static readonly Color Red = new Color32(234, 84, 78, 255);
-        public static readonly Color Blue = new Color32(127, 192, 222, 255);
-        public static readonly Color Green = new Color32(84, 178, 82, 255);
+        public static readonly Color Red = UIShapes.Red;
+        public static readonly Color Blue = UIShapes.Blue;
+        public static readonly Color Green = UIShapes.Green;
         static readonly Color Disabled = new Color32(150, 170, 182, 255);
 
-        const float SlantRatio = 0.34f;
+        /// <summary>Скос: на сколько верх сдвинут относительно низа, в долях высоты.</summary>
+        public const float SlantRatio = 0.22f;
+        const float Bevel = 6f, Shade = 7f;
+
         readonly Color _fill;
         readonly bool _first, _last;
         readonly Label _small, _big;
@@ -51,25 +54,42 @@ namespace StickmanJumper.UI
             _big.text = big;
         }
 
-        /// <summary>Пустой декоративный сегмент панели (в оригинале такие есть между кнопками).</summary>
+        /// <summary>Пустой голубой сегмент панели (в оригинале такие есть между кнопками).</summary>
         public static SlantButton Blank(bool first = false, bool last = false) => new SlantButton(null, null, Blue, null, first, last);
 
         void Draw(MeshGenerationContext ctx)
         {
-            var r = contentRect;
-            if (r.width <= 1f || r.height <= 1f) return;
-            float w = r.width, h = r.height, s = h * SlantRatio;
-            Color c = enabledSelf || string.IsNullOrEmpty(_big.text) ? _fill : Disabled;
-            if (_down) c = Color.Lerp(c, Color.black, 0.18f);
-            else if (_hover && enabledSelf) c = Color.Lerp(c, Color.white, 0.15f);
+            float w = resolvedStyle.width, h = resolvedStyle.height;
+            if (w <= 1f || h <= 1f) return;
+            float s = h * SlantRatio;
+            bool blank = string.IsNullOrEmpty(_big.text);
+            Color c = enabledSelf || blank ? _fill : Disabled;
+            if (_down && enabledSelf) c = Color.Lerp(c, Color.black, 0.2f);
+            else if (_hover && enabledSelf) c = Color.Lerp(c, Color.white, 0.12f);
+            Color light = Color.Lerp(c, Color.white, 0.55f);
+            Color dark = Color.Lerp(c, Color.black, 0.72f);
 
             var p = ctx.painter2D;
-            p.fillColor = c;
+            // Layers: dark shade (full) → light bevel (right edge pulled in) → base (top/left pushed in too).
+            Quad(p, w, h, s, 0f, 0f, 0f, dark);
+            Quad(p, w, h, s, 0f, 0f, Shade, light);
+            Quad(p, w, h, s, Bevel, Bevel, Shade, c);
+        }
+
+        /// <summary>Параллелограмм: top — отступ сверху, left — сдвиг левого края, right — сдвиг правого края внутрь.</summary>
+        void Quad(Painter2D p, float w, float h, float s, float top, float left, float right, Color color)
+        {
+            float k = top / h; // slanted edges move with the top
+            float tl = (_first ? 0f : s * (1f - k)) + left;
+            float bl = left;
+            float tr = (_last ? w : w - s * k) - right;
+            float br = (_last ? w : w - s) - right;
+            p.fillColor = color;
             p.BeginPath();
-            p.MoveTo(new Vector2(_first ? 0f : s, 0f));
-            p.LineTo(new Vector2(w, 0f));
-            p.LineTo(new Vector2(_last ? w : w - s, h));
-            p.LineTo(new Vector2(0f, h));
+            p.MoveTo(new Vector2(tl, top));
+            p.LineTo(new Vector2(tr, top));
+            p.LineTo(new Vector2(br, h));
+            p.LineTo(new Vector2(bl, h));
             p.ClosePath();
             p.Fill();
         }

@@ -199,7 +199,7 @@ namespace StickmanJumper.EditorTools
             art.White = GeneratedArt.Load("White");
             art.Circle = GeneratedArt.Load("Circle");
             art.Limb = GeneratedArt.Load("Limb");
-            art.Paper = GeneratedArt.Load("Paper");
+            art.Paper = PlaceholderImporter.LoadSprite("paper") ?? GeneratedArt.Load("Paper");
             art.FogBand = GeneratedArt.Load("FogBand");
             art.Dash = GeneratedArt.Load("Dash");
             art.Star = GeneratedArt.Load("Star");

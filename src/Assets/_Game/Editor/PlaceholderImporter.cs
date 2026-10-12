@@ -37,9 +37,12 @@ namespace StickmanJumper.EditorTools
             public readonly bool Tiled;
             /// <summary>Опору ставить на низ древка (ищем самый «плотный» столбец пикселей).</summary>
             public readonly bool PolePivot;
+            /// <summary>Свой масштаб (пикселей на метр), 0 — общий.</summary>
+            public readonly float Ppu;
 
-            public Item(string atlas, string source, string name, string usage, Vector2 pivot, bool tiled = false, bool polePivot = false)
+            public Item(string atlas, string source, string name, string usage, Vector2 pivot, bool tiled = false, bool polePivot = false, float ppu = 0f)
             {
+                Ppu = ppu;
                 Atlas = atlas;
                 Source = source;
                 Name = name;
@@ -110,6 +113,8 @@ namespace StickmanJumper.EditorTools
             new Item(MainAtlas, "cloud2.png", "cloud2", "Облако (фон)", Center),
             new Item(MainAtlas, "cloud3.png", "cloud3", "Облако (фон)", Center),
             new Item(SkylineAtlas, "background0.png", "skyline", "Силуэт города (дальний фон)", Bottom, true),
+            // Crumpled graph paper: 1024 px tile, 20 px cells → a cell ≈ 1.3 m (stickman ≈ 1.5 cells, like the original).
+            new Item(null, "backSquare-hd.png", "paper", "Мятый тетрадный лист (фон)", Center, true, false, 15.4f),
         };
 
         public static readonly (string Source, string Usage)[] Sounds =
@@ -250,11 +255,11 @@ namespace StickmanJumper.EditorTools
             if (importer == null) return;
             importer.textureType = TextureImporterType.Sprite;
             importer.spriteImportMode = SpriteImportMode.Single;
-            importer.spritePixelsPerUnit = PixelsPerUnit;
+            importer.spritePixelsPerUnit = item.Ppu > 0f ? item.Ppu : PixelsPerUnit;
             importer.mipmapEnabled = false;
             importer.alphaIsTransparency = true;
             importer.filterMode = FilterMode.Bilinear;
-            importer.wrapMode = TextureWrapMode.Clamp;
+            importer.wrapMode = item.Tiled ? TextureWrapMode.Repeat : TextureWrapMode.Clamp;
             importer.textureCompression = TextureImporterCompression.Uncompressed;
             var settings = new TextureImporterSettings();
             importer.ReadTextureSettings(settings);

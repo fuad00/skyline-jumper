@@ -33,7 +33,7 @@ namespace StickmanJumper.UI
     /// </summary>
     public sealed class GameUI
     {
-        static readonly Color MapBuilding = new Color(0.06f, 0.11f, 0.19f, 0.6f);
+        static readonly Color MapBuilding = new Color(0.07f, 0.09f, 0.12f, 0.55f);
         static readonly Color MapTarget = new Color(0.86f, 0.1f, 0.1f, 1f);
         static readonly Color MapLast = new Color(0.12f, 0.62f, 0.22f, 1f);
 
@@ -41,6 +41,8 @@ namespace StickmanJumper.UI
         readonly VisualElement _root, _hud, _menu, _stageScreen, _levelScreen, _summary, _pauseOverlay;
         readonly VisualElement _minimap, _windFill, _windArrow, _stageCards, _levelGrid, _levelBadge, _summaryFace;
         readonly Label _time, _hint;
+        readonly VisualElement _hintBox;
+        readonly ClockDial _clock;
         readonly Label _titleSmall, _titleBig, _levelLine, _distance, _best, _points, _record;
         readonly VisualElement[] _stars = new VisualElement[3];
         readonly Button _zoom;
@@ -77,6 +79,7 @@ namespace StickmanJumper.UI
             _summaryFace = root.Q<VisualElement>("summary-face");
             _time = root.Q<Label>("hud-time");
             _hint = root.Q<Label>("hint");
+            _hintBox = root.Q<VisualElement>("hint-box");
             _titleSmall = root.Q<Label>("summary-title-small");
             _titleBig = root.Q<Label>("summary-title-big");
             _levelLine = root.Q<Label>("summary-level");
@@ -101,6 +104,19 @@ namespace StickmanJumper.UI
             root.Q<Label>("points-big").text = UIText.PointsBig;
             _record.text = UIText.NewBest;
 
+            // Plates drawn in code, in the original's style.
+            Plate.Dress(root.Q<VisualElement>("wind-panel"), Plate.Kind.Hud, 22f, 5f);
+            Plate.Dress(root.Q<VisualElement>("time-panel"), Plate.Kind.Hud, 22f, 5f);
+            Plate.Dress(_zoom, Plate.Kind.Hud, 22f, 5f);
+            Plate.Dress(root.Q<VisualElement>("pause"), Plate.Kind.Hud, 22f, 5f);
+            Plate.Dress(_hintBox, Plate.Kind.LightShadow, 24f, 5f, new Color32(196, 230, 244, 255));
+            Plate.Dress(root.Q<VisualElement>(className: "summary-card"), Plate.Kind.Dark, 40f, 8f);
+            Plate.Dress(root.Q<VisualElement>("points-bar"), Plate.Kind.Rimmed, 26f, 6f, UIShapes.Red);
+            _clock = new ClockDial();
+            root.Q<VisualElement>("clock-slot").Add(_clock);
+            foreach (var bar in new[] { "menu-bar", "stage-bar", "level-bar", "pause-bar", "summary-bar" })
+                Plate.Dress(root.Q<VisualElement>(bar), Plate.Kind.Dark, 24f, 7f);
+
             // Bottom bars, like the original: coloured slanted segments on a dark plate, blanks fill the rest.
             var menuBar = root.Q<VisualElement>("menu-bar");
             menuBar.Add(new SlantButton(UIText.PlaySmall, UIText.PlayBig, SlantButton.Red, () => PlayClicked?.Invoke(), first: true));
@@ -108,6 +124,7 @@ namespace StickmanJumper.UI
             menuBar.Add(_soundButton);
             _musicButton = new SlantButton(UIText.MusicSmall, UIText.On, SlantButton.Blue, () => MusicClicked?.Invoke());
             menuBar.Add(_musicButton);
+            menuBar.Add(SlantButton.Blank());
             menuBar.Add(SlantButton.Blank(last: true));
 
             Bar(root.Q<VisualElement>("stage-bar"), new SlantButton(null, UIText.Back, SlantButton.Red, () => BackClicked?.Invoke(), first: true));
@@ -117,11 +134,13 @@ namespace StickmanJumper.UI
             pauseBar.Add(new SlantButton(UIText.MenuSmall, UIText.MenuBig, SlantButton.Red, () => MenuClicked?.Invoke(), first: true));
             pauseBar.Add(new SlantButton(UIText.RetrySmall, UIText.RetryBig, SlantButton.Blue, () => RetryClicked?.Invoke()));
             pauseBar.Add(SlantButton.Blank());
+            pauseBar.Add(SlantButton.Blank());
             pauseBar.Add(new SlantButton(UIText.ContinueSmall, UIText.ContinueBig, SlantButton.Green, () => ContinueClicked?.Invoke(), last: true));
 
             var summaryBar = root.Q<VisualElement>("summary-bar");
             summaryBar.Add(new SlantButton(UIText.MenuSmall, UIText.MenuBig, SlantButton.Red, () => MenuClicked?.Invoke(), first: true));
             summaryBar.Add(new SlantButton(UIText.RetrySmall, UIText.RetryBig, SlantButton.Blue, () => RetryClicked?.Invoke()));
+            summaryBar.Add(SlantButton.Blank());
             summaryBar.Add(SlantButton.Blank());
             _nextButton = new SlantButton(UIText.NextSmall, UIText.NextBig, SlantButton.Green, () => NextClicked?.Invoke(), last: true);
             summaryBar.Add(_nextButton);
@@ -129,7 +148,6 @@ namespace StickmanJumper.UI
             _zoom.clicked += () => ZoomClicked?.Invoke();
             root.Q<Button>("pause").clicked += () => PauseClicked?.Invoke();
 
-            SetIcon(root.Q<VisualElement>("icon-time"), art.IconTime, "◷");
             SetIcon(_windArrow, art.IconWind, "›");
             SetIcon(root.Q<VisualElement>("icon-zoom"), art.IconZoom, "+");
             SetIcon(root.Q<VisualElement>("icon-pause"), art.IconPause, "II");
@@ -148,11 +166,11 @@ namespace StickmanJumper.UI
             Show(UIScreen.None);
         }
 
+        /// <summary>Как в оригинале: 5 сегментов, первый — кнопка, остальные пустые.</summary>
         static void Bar(VisualElement bar, SlantButton first)
         {
             bar.Add(first);
-            bar.Add(SlantButton.Blank());
-            bar.Add(SlantButton.Blank());
+            for (int i = 0; i < 3; i++) bar.Add(SlantButton.Blank());
             bar.Add(SlantButton.Blank(last: true));
         }
 
@@ -212,7 +230,10 @@ namespace StickmanJumper.UI
                 var card = new VisualElement();
                 card.AddToClassList("stage-card");
                 card.AddToClassList("clickable");
-                card.Add(StageHead(v));
+                Plate.Dress(card, Plate.Kind.LightShadow, 34f, 6f, UIShapes.Blue);
+                var head = StageHead(v);
+                head.AddToClassList("stage-head");
+                card.Add(head);
                 var foot = new VisualElement { pickingMode = PickingMode.Ignore };
                 foot.AddToClassList("stage-foot");
                 var star = new VisualElement { pickingMode = PickingMode.Ignore };
@@ -242,10 +263,17 @@ namespace StickmanJumper.UI
             }
         }
 
+        /// <summary>Логотип этапа как в оригинале: крупная цифра, «этап», название и подпись, силуэт города внизу.</summary>
         VisualElement StageHead(StageCardView v)
         {
             var head = new VisualElement { pickingMode = PickingMode.Ignore };
-            head.AddToClassList("stage-head");
+            if (_art.Skyline != null)
+            {
+                var sky = new VisualElement { pickingMode = PickingMode.Ignore };
+                sky.AddToClassList("stage-skyline");
+                sky.style.backgroundImage = new StyleBackground(_art.Skyline);
+                head.Add(sky);
+            }
             head.Add(Text(v.Number.ToString(), "stage-number"));
             head.Add(Text(UIText.StageWord, "stage-word"));
             var texts = new VisualElement { pickingMode = PickingMode.Ignore };
@@ -260,8 +288,10 @@ namespace StickmanJumper.UI
         public void SetLevels(StageCardView stage, IReadOnlyList<LevelNodeView> levels)
         {
             _levelBadge.Clear();
+            Plate.Dress(_levelBadge, Plate.Kind.Dark, 30f, 7f);
             var head = StageHead(stage);
-            foreach (var child in new List<VisualElement>(head.Children())) _levelBadge.Add(child);
+            head.AddToClassList("stage-badge-inner");
+            _levelBadge.Add(head);
 
             _levelGrid.Clear();
             for (int i = 0; i < levels.Count; i++)
@@ -271,9 +301,14 @@ namespace StickmanJumper.UI
                 var node = new VisualElement();
                 node.AddToClassList("level-node");
                 node.AddToClassList("clickable");
-                if (v.Locked) node.AddToClassList("level-node--locked");
+                var plate = Plate.Dress(node, Plate.Kind.LightShadow, 28f, 5f, v.Locked ? new Color32(150, 170, 182, 255) : UIShapes.Blue);
+                if (!v.Locked)
+                {
+                    node.RegisterCallback<PointerEnterEvent>(_ => { plate.Fill = new Color32(160, 214, 232, 255); plate.MarkDirtyRepaint(); });
+                    node.RegisterCallback<PointerLeaveEvent>(_ => { plate.Fill = UIShapes.Blue; plate.MarkDirtyRepaint(); });
+                }
                 var stars = new VisualElement { pickingMode = PickingMode.Ignore };
-                stars.AddToClassList("node-stars");
+                stars.AddToClassList("node-top");
                 for (int s = 0; s < 3; s++)
                 {
                     var st = new VisualElement { pickingMode = PickingMode.Ignore };
@@ -283,8 +318,11 @@ namespace StickmanJumper.UI
                     stars.Add(st);
                 }
                 node.Add(stars);
-                node.Add(Text(v.Number.ToString(), "node-number"));
-                node.Add(Text(v.Points > 0 ? UIText.PointsShort(v.Points) : " ", "node-points"));
+                var body = new VisualElement { pickingMode = PickingMode.Ignore };
+                body.AddToClassList("node-body");
+                body.Add(Text(v.Number.ToString(), "node-number"));
+                body.Add(Text(v.Points > 0 ? UIText.PointsShort(v.Points) : " ", "node-points"));
+                node.Add(body);
                 if (v.Locked)
                 {
                     var icon = new VisualElement { pickingMode = PickingMode.Ignore };
@@ -306,9 +344,10 @@ namespace StickmanJumper.UI
 
         // ------------------------------------------------------------------ HUD
 
-        public void SetHud(float timeLeft, float wind, float windMax, bool zoomOn)
+        public void SetHud(float timeLeft, float timeLimit, float wind, float windMax, bool zoomOn)
         {
             _time.text = UIText.Timer(timeLeft);
+            _clock.Used = 1f - timeLeft / Mathf.Max(0.01f, timeLimit);
             _time.EnableInClassList("time-text--low", timeLeft < 5f);
             float k = Mathf.Clamp01(Mathf.Abs(wind) / Mathf.Max(0.1f, windMax));
             _windFill.style.width = Length.Percent(Mathf.Lerp(18f, 100f, k));
@@ -327,14 +366,17 @@ namespace StickmanJumper.UI
 
         void DrawMinimap(MeshGenerationContext ctx)
         {
-            var r = _minimap.contentRect;
-            if (_mapLayout == null || r.width <= 1f || r.height <= 1f) return;
+            var full = new Rect(0f, 0f, _minimap.resolvedStyle.width, _minimap.resolvedStyle.height);
+            if (full.width <= 2f || full.height <= 2f) return;
             var p = ctx.painter2D;
+            var inner = UIShapes.LightPlate(p, full, 22f, 5f, UIShapes.HudBlue);
+            if (_mapLayout == null) return;
+            var r = UIShapes.Inset(inner, 8f);
             Rect world = _mapLayout.Overview;
             world = Rect.MinMaxRect(world.xMin - 3f, -2f, world.xMax + 3f, world.yMax + 6f);
             float s = Mathf.Min(r.width / world.width, r.height / world.height);
             Vector2 off = new Vector2((r.width - world.width * s) * 0.5f, (r.height - world.height * s) * 0.5f);
-            Vector2 Map(Vector2 w) => new Vector2(off.x + (w.x - world.xMin) * s, r.height - (off.y + (w.y - world.yMin) * s));
+            Vector2 Map(Vector2 w) => new Vector2(r.x + off.x + (w.x - world.xMin) * s, r.y + r.height - (off.y + (w.y - world.yMin) * s));
 
             foreach (var solid in _mapLayout.Solids)
             {
@@ -367,7 +409,7 @@ namespace StickmanJumper.UI
         public void SetHint(string text)
         {
             _hint.text = text;
-            Display(_hint, !string.IsNullOrEmpty(text));
+            Display(_hintBox, !string.IsNullOrEmpty(text));
         }
 
         // ------------------------------------------------------------------ summary

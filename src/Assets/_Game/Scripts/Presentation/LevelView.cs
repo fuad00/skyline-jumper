@@ -28,15 +28,19 @@ namespace StickmanJumper.Presentation
 
         static readonly Color PaperFallback = new Color(0.93f, 0.92f, 0.88f);
         // The silhouette texture is already see-through; only darken it, like the grey city on the original's paper.
-        static readonly Color SkylineTint = new Color(0.5f, 0.5f, 0.53f, 1f);
-        static readonly Color Asphalt = new Color(0.25f, 0.25f, 0.27f);
-        static readonly Color AsphaltDeep = new Color(0.16f, 0.16f, 0.18f);
-        static readonly Color Curb = new Color(0.55f, 0.55f, 0.55f);
+        static readonly Color SkylineTint = new Color(0.42f, 0.42f, 0.45f, 1f);
+        static readonly Color Asphalt = new Color(0.36f, 0.36f, 0.38f);
+        // Below the street everything melts into white haze, like the original (no dark slab at the bottom).
+        static readonly Color AsphaltDeep = new Color(0.93f, 0.93f, 0.91f);
+        static readonly Color Curb = new Color(0.62f, 0.62f, 0.62f);
         static readonly Color MarkerInk = new Color(0.1f, 0.1f, 0.12f, 1f); // the original's markers are dark on the paper
         const int MarkerStep = 5;
         static readonly Color TargetRed = new Color(0.86f, 0.1f, 0.1f);
 
         const float FlagHeight = 2.6f;
+        // The original shows ≈36 grid cells across the screen; one tile of the paper has ≈51.
+        const float PaperTilesAcross = 36f / 51.2f;
+        const float PaperDrift = 0.12f;
         const float DecorScale = 0.75f;
 
         readonly SpriteKit _kit;
@@ -46,6 +50,7 @@ namespace StickmanJumper.Presentation
         readonly List<ParallaxLayer> _parallax = new List<ParallaxLayer>();
         readonly List<Cloud> _clouds = new List<Cloud>();
         SpriteRenderer _paper, _guide, _lastFlag;
+        Transform _paperLayer;
         float _flagTopY;
 
         public Transform Root => _root;
@@ -96,17 +101,13 @@ namespace StickmanJumper.Presentation
             float viewH = cam.orthographicSize * 2f;
             float viewW = viewH * Mathf.Max(cam.aspect, 2.4f);
 
+            UpdatePaper(c, viewH * cam.aspect, viewH);
             foreach (var p in _parallax)
             {
                 Vector2 pos = p.Base + Vector2.Scale(c, p.Factor);
                 if (p.SnapX > 0f) pos.x += Mathf.Round((c.x - pos.x) / p.SnapX) * p.SnapX;
                 if (p.SnapY > 0f) pos.y += Mathf.Round((c.y - pos.y) / p.SnapY) * p.SnapY;
                 p.T.localPosition = new Vector3(pos.x, pos.y, 0f);
-            }
-            if (_paper != null)
-            {
-                Vector2 tile = _paper.sprite.bounds.size;
-                _paper.size = new Vector2(Mathf.Ceil(viewW / tile.x + 2f) * tile.x, Mathf.Ceil(viewH / tile.y + 2f) * tile.y);
             }
 
             foreach (var cl in _clouds)
@@ -128,16 +129,30 @@ namespace StickmanJumper.Presentation
 
         // ------------------------------------------------------------------ background
 
+        /// <summary>Тетрадный лист. Как в оригинале, клетка на экране всегда одного размера (лист — фон, а не часть мира).</summary>
         void BuildPaper()
         {
-            var layer = new GameObject("Paper").transform;
-            layer.SetParent(_root, false);
+            _paperLayer = new GameObject("Paper").transform;
+            _paperLayer.SetParent(_root, false);
             if (_art.Paper == null) return;
-            _paper = _kit.Make("Sheet", layer, _art.Paper, SortOrder.Sky);
+            _paper = _kit.Make("Sheet", _paperLayer, _art.Paper, SortOrder.Sky);
             _paper.drawMode = SpriteDrawMode.Tiled;
+            _paper.size = (Vector2)_art.Paper.bounds.size * 3f;
+        }
+
+        void UpdatePaper(Vector2 cam, float viewW, float viewH)
+        {
+            if (_paper == null) return;
             Vector2 tile = _art.Paper.bounds.size;
-            _paper.size = tile * 6f;
-            _parallax.Add(new ParallaxLayer { T = layer, Base = Vector2.zero, Factor = new Vector2(0.92f, 0.92f), SnapX = tile.x, SnapY = tile.y });
+            // One texture tile (≈51 cells) spans the screen width, like the original.
+            float s = viewW / (tile.x * PaperTilesAcross);
+            _paperLayer.localScale = new Vector3(s, s, 1f);
+            // Drift slowly with the camera (deep background), re-centred by whole tiles so it never runs out.
+            Vector2 drift = cam * PaperDrift;
+            float tw = tile.x * s, th = tile.y * s;
+            float x = cam.x - Mathf.Repeat(drift.x, tw);
+            float y = cam.y - Mathf.Repeat(drift.y, th);
+            _paperLayer.localPosition = new Vector3(x, y, 0f);
         }
 
         void BuildSkyline()
@@ -187,10 +202,10 @@ namespace StickmanJumper.Presentation
             float x0 = _layout.Overview.xMin - 70f, x1 = _layout.Overview.xMax + 70f;
             if (_art.FogBand != null)
             {
-                var band = _kit.Make("Band", layer, _art.FogBand, SortOrder.Fog, new Color(1f, 1f, 1f, 0.55f));
+                var band = _kit.Make("Band", layer, _art.FogBand, SortOrder.Fog, new Color(0.96f, 0.96f, 0.94f, 0.9f));
                 Vector2 size = _art.FogBand.bounds.size;
-                band.transform.localScale = new Vector3((x1 - x0) / size.x, 7f / size.y, 1f);
-                SpriteKit.PlaceBottomCenter(band, (x0 + x1) * 0.5f, -1.5f);
+                band.transform.localScale = new Vector3((x1 - x0) / size.x, 9f / size.y, 1f);
+                SpriteKit.PlaceBottomCenter(band, (x0 + x1) * 0.5f, -1.3f);
             }
             if (_art.Clouds == null || _art.Clouds.Length == 0) return;
             var rng = new System.Random(11);
@@ -213,8 +228,8 @@ namespace StickmanJumper.Presentation
             street.SetParent(_root, false);
             float x0 = _layout.Overview.xMin - 150f, x1 = _layout.Overview.xMax + 150f;
             _kit.Box("Curb", street, Rect.MinMaxRect(x0, -0.4f, x1, 0f), Curb, SortOrder.Street + 1);
-            _kit.Box("Asphalt", street, Rect.MinMaxRect(x0, -2.2f, x1, -0.4f), Asphalt, SortOrder.Street);
-            _kit.Box("Underground", street, Rect.MinMaxRect(x0, -40f, x1, -2.2f), AsphaltDeep, SortOrder.Street);
+            _kit.Box("Asphalt", street, Rect.MinMaxRect(x0, -1.2f, x1, -0.4f), Asphalt, SortOrder.Street);
+            _kit.Box("Underground", street, Rect.MinMaxRect(x0, -60f, x1, -1.2f), AsphaltDeep, SortOrder.Fog + 1);
         }
 
         void BuildBuilding(string name, BuildingSpec spec)

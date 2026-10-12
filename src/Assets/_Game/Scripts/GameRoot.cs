@@ -290,7 +290,7 @@ namespace StickmanJumper
 
             if (_playing && !_ui.SummaryVisible)
             {
-                _ui.SetHud(_session.TimeLeft, _layout.Wind, _level.WindMax, _cameraRig.Overview);
+                _ui.SetHud(_session.TimeLeft, _layout.TimeLimit, _layout.Wind, _level.WindMax, _cameraRig.Overview);
                 _ui.SetMinimap(_layout, focus, _session.LastRunStartX);
                 _ui.SetHint(UIText.Hint(_session.Phase, _session.CanopyDeployed));
             }
