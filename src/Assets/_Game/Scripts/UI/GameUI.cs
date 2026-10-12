@@ -192,6 +192,19 @@ namespace StickmanJumper.UI
             return false;
         }
 
+        /// <summary>Вырез экрана и скруглённые углы телефона: всё содержимое интерфейса держим внутри безопасной зоны.</summary>
+        public void ApplySafeArea(Rect safe, int screenW, int screenH)
+        {
+            float w = _root.parent != null ? _root.parent.resolvedStyle.width : 0f;
+            float h = _root.parent != null ? _root.parent.resolvedStyle.height : 0f;
+            if (w <= 1f || h <= 1f || screenW <= 0 || screenH <= 0) return;
+            float sx = w / screenW, sy = h / screenH;
+            _root.style.left = safe.xMin * sx;
+            _root.style.right = (screenW - safe.xMax) * sx;
+            _root.style.top = (screenH - safe.yMax) * sy;
+            _root.style.bottom = safe.yMin * sy;
+        }
+
         static void Display(VisualElement e, bool show) => e.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
 
         // ------------------------------------------------------------------ screens

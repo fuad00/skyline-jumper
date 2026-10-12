@@ -263,6 +263,7 @@ namespace StickmanJumper
         {
             float dt = Time.deltaTime;
             float realDt = Time.unscaledDeltaTime;
+            _ui.ApplySafeArea(Screen.safeArea, Screen.width, Screen.height);
             ReadKeyboard();
             if (Paused)
             {

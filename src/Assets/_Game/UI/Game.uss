@@ -1,5 +1,5 @@
 /* Stickman Jumper runtime UI in the original's style: pale-blue panels with a thick navy outline on graph paper.
-   Landscape reference canvas 1920 x 1080 (PanelSettings: scale with screen size, Expand). Font: Rubik ExtraBold (OFL). */
+   Landscape reference canvas 1920 x 1080 (PanelSettings: scale with screen size, Expand). Font: PT Sans Bold (OFL, close to the original Myriad). */
 
 .root {
     position: absolute;
@@ -7,7 +7,7 @@
     top: 0;
     right: 0;
     bottom: 0;
-    -unity-font-definition: url("../Fonts/Rubik-ExtraBold.ttf");
+    -unity-font-definition: url("../Fonts/PTSans-Bold.ttf");
     color: rgb(16, 28, 48);
 }
 

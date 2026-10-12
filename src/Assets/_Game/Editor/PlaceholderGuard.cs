@@ -38,7 +38,11 @@ namespace StickmanJumper.EditorTools
         }
     }
 
-    /// <summary>Валит любую сборку игрока, пока в ней есть заглушки.</summary>
+    /// <summary>
+    /// Валит любую сборку игрока, пока в ней есть заглушки. Единственное исключение (решено 2026-10-12):
+    /// Development-сборка для теста на своём телефоне (BuildTools.BuildAndroidTest, файл «…-INTERNAL-TEST…»).
+    /// Релизная сборка с заглушками не собирается никогда.
+    /// </summary>
     public sealed class PlaceholderBuildBlocker : IPreprocessBuildWithReport
     {
         public int callbackOrder => -1000;
@@ -47,6 +51,13 @@ namespace StickmanJumper.EditorTools
         {
             var v = PlaceholderGuard.FindViolations();
             if (v.Count == 0) return;
+            bool development = (report.summary.options & BuildOptions.Development) != 0;
+            bool internalTest = report.summary.outputPath.Contains("INTERNAL-TEST");
+            if (development && internalTest)
+            {
+                Debug.LogWarning($"[PlaceholderGuard] INTERNAL TEST build with {v.Count} third-party placeholders — only for your own device, never share it.");
+                return;
+            }
             throw new BuildFailedException(
                 $"Сборка запрещена: сцены ссылаются на {v.Count} чужих файлов из {PlaceholderImporter.Folder}. " +
                 "Замени их своими (список в reference/PLACEHOLDER_ASSETS.md).\n" + string.Join("\n", v.Take(20)));

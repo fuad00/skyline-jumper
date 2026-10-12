@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: d3d8e10402e8b410394d894e8d910937
+guid: 4b1db455e786b4ad89b02226175a0109
 TrueTypeFontImporter:
   externalObjects: {}
   serializedVersion: 4
@@ -9,7 +9,7 @@ TrueTypeFontImporter:
   characterPadding: 1
   includeFontData: 1
   fontNames:
-  - Rubik
+  - PT Sans
   fallbackFontReferences: []
   customCharacters: 
   fontRenderingMode: 0
