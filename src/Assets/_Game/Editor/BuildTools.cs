@@ -65,6 +65,8 @@ namespace StickmanJumper.EditorTools
             PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.iOS, BundleId);
             PlayerSettings.iOS.sdkVersion = iOSSdkVersion.SimulatorSDK;
             PlayerSettings.iOS.simulatorSdkArchitecture = AppleMobileArchitectureSimulator.ARM64;
+            // Test links stickmanjumper://level/<id> open a level at once (GameRoot.OpenDevLink, development builds only).
+            PlayerSettings.iOS.iOSUrlSchemes = new[] { "stickmanjumper" };
             PlayerSettings.bundleVersion = "0.1.0";
 
             var options = new BuildPlayerOptions

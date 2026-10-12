@@ -30,9 +30,7 @@
             </ui:Button>
         </ui:VisualElement>
 
-        <ui:VisualElement name="hint-box" class="hint-box" picking-mode="Ignore">
-            <ui:Label name="hint" class="hint" picking-mode="Ignore" />
-        </ui:VisualElement>
+        <ui:Label name="tutorial" class="tutorial" picking-mode="Ignore" />
 
         <!-- ===== main menu ===== -->
         <ui:VisualElement name="menu-screen" class="screen" picking-mode="Ignore">

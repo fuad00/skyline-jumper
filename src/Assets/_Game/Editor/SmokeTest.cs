@@ -212,6 +212,13 @@ namespace StickmanJumper.EditorTools
                     if (g.Stickman.IsRagdoll && !Armed.ContainsKey("c10")) Armed["c10"] = EditorApplication.timeSinceStartup;
                     CloseUp(g.Stickman.IsRagdoll && EditorApplication.timeSinceStartup - Armed["c10"] > 1.2, "c10_crash_ragdoll", 2.2f);
                     TargetShot(g, g.Stickman.IsRagdoll && EditorApplication.timeSinceStartup - Armed["c10"] > 0.6, "12b_target_lights_red");
+                    // Like the original: after a crash the summary waits for a tap.
+                    if (g.Stickman.IsRagdoll && !Armed.ContainsKey("tapB") && EditorApplication.timeSinceStartup - Armed["c10"] > 5.0)
+                    {
+                        Armed["tapB"] = 0;
+                        if (g.UI.SummaryVisible) Fail("after a crash the summary came without a tap");
+                        g.Tap();
+                    }
                     if (g.UI.SummaryVisible)
                     {
                         if (g.LevelView.Lights != TargetLight.Red) Fail($"crashed but the signal lights are {g.LevelView.Lights}");
@@ -231,6 +238,7 @@ namespace StickmanJumper.EditorTools
                     ShotWhenDelayed(g.Stickman.IsRagdoll, "14_stumble", 0.45);
                     if (g.Stickman.IsRagdoll && !Armed.ContainsKey("c11")) Armed["c11"] = EditorApplication.timeSinceStartup;
                     CloseUp(g.Stickman.IsRagdoll && EditorApplication.timeSinceStartup - Armed["c11"] > 1.5, "c11_stumble_ragdoll", 2.2f);
+                    TapAfterCrash(g, "c11", 2.5);
                     if (g.UI.SummaryVisible) { Report("run C missed edge   ", g, JumpOutcome.Died); Next(); }
                     break;
                 case 22: // run D: canopy right after the push-off (it opens fully — close-ups), then a tap cuts it away → ragdoll, crash
@@ -248,7 +256,8 @@ namespace StickmanJumper.EditorTools
                         ShotWhen(s.Phase == JumpPhase.Airborne && Shots.Contains("c07_canopy"), "08_canopy");
                         if (s.CanopyDeployed && Shots.Contains("08_canopy") && _pendingSnap == null)
                         {
-                            g.Autopilot = null;
+                            // A pilot that never taps again keeps the guided level's hints out of this run (on easy1 a person can't cut it).
+                            g.Autopilot = new Autopilot { NeverOpenCanopy = true };
                             g.Tap();
                             _runDStep = 2;
                             Armed["c12"] = EditorApplication.timeSinceStartup;
@@ -256,6 +265,7 @@ namespace StickmanJumper.EditorTools
                         break;
                     }
                     CloseUp(g.Stickman.IsRagdoll && EditorApplication.timeSinceStartup - Armed["c12"] > 0.4, "c12_cut_canopy_tumbles", 3f);
+                    if (g.Session.Phase.IsFinished()) TapAfterCrash(g, "c12", 3.0);
                     if (g.UI.SummaryVisible)
                     {
                         if (!g.Stickman.IsRagdoll) Fail("cutting the canopy did not make him a ragdoll");
@@ -348,10 +358,83 @@ namespace StickmanJumper.EditorTools
                 case 34: // back in the editor (passed), share, paste the code, «from level», night, undo
                     if (BuilderTour(g, BuilderAfter)) Next();
                     break;
-                case 35:
+                case 35: // the guided first level, played like a person: the hints stop the game and wait for a tap
+                    g.Autopilot = null;
+                    g.StartLevel(0, 0);
+                    _guidedStep = 0;
+                    _hintShots = 0;
+                    _lastHint = -1;
+                    _handledHint = -1;
+                    Next();
+                    break;
+                case 36:
+                    if (GuidedTour(g)) Next();
+                    break;
+                case 37:
                     Finish();
                     break;
             }
+        }
+
+        // ---------------------------------------------------------------- guided first level
+
+        static int _guidedStep, _hintShots, _lastHint, _handledHint;
+        static double _hintSince;
+
+        /// <summary>Как в оригинале: без подсказки тап не действует; каждая подсказка — снимок и тап.</summary>
+        static bool GuidedTour(GameRoot g)
+        {
+            var s = g.Session;
+            var t = g.Tutorial;
+            if (t == null || !t.Guided)
+            {
+                Fail("the first level is not guided (no hints imported?)");
+                return true;
+            }
+            if (_guidedStep == 0) // before the first hint: a tap must do nothing
+            {
+                g.Tap();
+                _guidedStep = 1;
+                return false;
+            }
+            if (_guidedStep == 1)
+            {
+                if (s.Phase != JumpPhase.Ready) Fail("on the guided level a tap without a hint started the jump");
+                _guidedStep = 2;
+                return false;
+            }
+            if (s.Phase.IsFinished())
+            {
+                if (_guidedStep == 2)
+                {
+                    _guidedStep = 3;
+                    if (_hintShots < 4) Fail($"only {_hintShots} of 4 hints showed on the guided level");
+                }
+                ShotWhenDelayed(s.Phase == JumpPhase.Landed, "t05_guided_landed", 1.0);
+                if (!g.UI.SummaryVisible) return false;
+                Report("run T guided level  ", g, JumpOutcome.WellDone);
+                return true;
+            }
+            if (t.Active < 0 || _pendingSnap != null || t.Active == _handledHint) return false;
+            if (t.Active != _lastHint)
+            {
+                _lastHint = t.Active;
+                _hintSince = EditorApplication.timeSinceStartup;
+                return false;
+            }
+            if (EditorApplication.timeSinceStartup - _hintSince < 0.8) return false; // let it fade in
+            string name = $"t{_hintShots + 1:00}_hint_{t.Items[t.Active].Key}";
+            if (!Shots.Contains(name))
+            {
+                bool expectHold = t.Items[t.Active].WaitForTouch;
+                if (expectHold != t.Holding) Fail($"{name}: holding {t.Holding}, expected {expectHold}");
+                ShotWhen(true, name);
+                return false;
+            }
+            _hintShots++;
+            _handledHint = t.Active;
+            g.Tap();
+            return false;
         }
 
         // ---------------------------------------------------------------- map builder tour
@@ -594,6 +677,16 @@ namespace StickmanJumper.EditorTools
         // ---------------------------------------------------------------- snapshots (scene + UI)
 
         /// <summary>Крупный план стикмена (камера на время снимка подъезжает к нему).</summary>
+        /// <summary>После падения итог ждёт тапа (как в оригинале): тапнуть через delay секунд после метки armed.</summary>
+        static void TapAfterCrash(GameRoot g, string armed, double delay)
+        {
+            string key = "tap_" + armed;
+            if (!Armed.TryGetValue(armed, out var since) || Armed.ContainsKey(key)) return;
+            if (EditorApplication.timeSinceStartup - since < delay || !g.Session.Phase.IsFinished()) return;
+            Armed[key] = 0;
+            g.Tap();
+        }
+
         /// <summary>Снимок цели целиком (флажок и столбики по краям).</summary>
         static void TargetShot(GameRoot g, bool condition, string name)
         {

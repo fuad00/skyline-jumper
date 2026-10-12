@@ -75,8 +75,7 @@ namespace StickmanJumper.UI
         const float StageSlideTime = 0.18f;
         /// <summary>Размер соседних карточек относительно центральной.</summary>
         const float StageSideScale = 0.8f;
-        readonly Label _time, _hint;
-        readonly VisualElement _hintBox;
+        readonly Label _time, _tutorial;
         readonly ClockDial _clock;
         readonly Label _titleSmall, _titleBig, _levelLine, _distance, _best, _points, _record;
         readonly VisualElement[] _stars = new VisualElement[3];
@@ -138,8 +137,7 @@ namespace StickmanJumper.UI
             _levelBadge = root.Q<VisualElement>("level-badge");
             _summaryFace = root.Q<VisualElement>("summary-face");
             _time = root.Q<Label>("hud-time");
-            _hint = root.Q<Label>("hint");
-            _hintBox = root.Q<VisualElement>("hint-box");
+            _tutorial = root.Q<Label>("tutorial");
             _titleSmall = root.Q<Label>("summary-title-small");
             _titleBig = root.Q<Label>("summary-title-big");
             _levelLine = root.Q<Label>("summary-level");
@@ -169,7 +167,6 @@ namespace StickmanJumper.UI
             Plate.Dress(root.Q<VisualElement>("time-panel"), Plate.Kind.Hud, 22f, 5f);
             Plate.Dress(_zoom, Plate.Kind.Hud, 22f, 5f);
             Plate.Dress(root.Q<VisualElement>("pause"), Plate.Kind.Hud, 22f, 5f);
-            Plate.Dress(_hintBox, Plate.Kind.LightShadow, 24f, 5f, new Color32(196, 230, 244, 255));
             Plate.Dress(root.Q<VisualElement>(className: "summary-card"), Plate.Kind.Dark, 40f, 8f);
             Plate.Dress(root.Q<VisualElement>("points-bar"), Plate.Kind.Rimmed, 26f, 6f, UIShapes.Red);
             _clock = new ClockDial();
@@ -319,7 +316,7 @@ namespace StickmanJumper.UI
             Display(_summary, screen == UIScreen.Summary);
             Display(_hud, screen == UIScreen.Game);
             foreach (var (s, e) in _extraScreens) Display(e, s == screen);
-            if (screen != UIScreen.Game) SetHint(string.Empty);
+            if (screen != UIScreen.Game) HideTutorial();
         }
 
         public void SetSound(bool sound, bool music)
@@ -672,11 +669,20 @@ namespace StickmanJumper.UI
             p.Fill();
         }
 
-        public void SetHint(string text)
+        /// <summary>Подсказка уровня — надпись на своём месте в мире (как в оригинале): центр и размер шрифта в точках панели.</summary>
+        public void SetTutorial(string text, Vector2 center, float fontSize, float alpha)
         {
-            _hint.text = text;
-            Display(_hintBox, !string.IsNullOrEmpty(text));
+            bool show = alpha > 0.01f && !string.IsNullOrEmpty(text);
+            Display(_tutorial, show);
+            if (!show) return;
+            _tutorial.text = text;
+            _tutorial.style.left = center.x;
+            _tutorial.style.top = center.y;
+            _tutorial.style.fontSize = fontSize;
+            _tutorial.style.opacity = alpha;
         }
+
+        public void HideTutorial() => Display(_tutorial, false);
 
         // ------------------------------------------------------------------ summary
 

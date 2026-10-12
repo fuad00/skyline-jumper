@@ -41,6 +41,31 @@ namespace StickmanJumper.Config
             public float RadiusFade;
         }
 
+        /// <summary>
+        /// Подсказка, стоящая в уровне (как в оригинале): надпись на своём месте, появляется в нужной фазе (и, если задано,
+        /// когда ступни стикмена в области Trigger), через ShowDelay; WaitForTouch — игра замирает до тапа. Тап её убирает.
+        /// </summary>
+        [Serializable]
+        public struct Tutorial
+        {
+            [Tooltip("Имя надписи в уровне (текст на языке игры — UIText.Tutorial по «уровень:имя»).")]
+            public string Key;
+            [Tooltip("Текст из файла уровня (если перевода нет).")]
+            public string Text;
+            [Tooltip("Центр надписи, м.")]
+            public Vector2 Position;
+            [Tooltip("Высота строки, м.")]
+            public float LineHeight;
+            [Tooltip("Фаза стикмена, как в оригинале: 0 — стоит, 1 — пятится, 2 — бежит, 3 — летит, 4 — под куполом, 8 — бежит по промежуточной платформе.")]
+            public int RequiredState;
+            [Tooltip("Показать через столько секунд после того, как совпали фаза (и область), с.")]
+            public float ShowDelay;
+            [Tooltip("Остановить игру и ждать тапа (тап и уберёт надпись, и сделает своё дело).")]
+            public bool WaitForTouch;
+            [Tooltip("Показать, только когда ступни внутри этой области, м (ширина 0 — где угодно).")]
+            public Rect Trigger;
+        }
+
         public Picture[] Pictures = new Picture[0];
         [Tooltip("Твёрдые прямоугольники (здания, краны, мосты…), м.")]
         public Rect[] Solids = new Rect[0];
@@ -54,6 +79,10 @@ namespace StickmanJumper.Config
         public bool[] InterLeft = new bool[0];
         [Tooltip("Источники света ночью (кроме самого стикмена).")]
         public LightSource[] Lights = new LightSource[0];
+        [Tooltip("Подсказки этого уровня (у оригинала — только там, где появляется новое).")]
+        public Tutorial[] Tutorials = new Tutorial[0];
+        [Tooltip("Обучающий уровень (оригинал: guidedLevel): тапы работают, только пока видна подсказка.")]
+        public bool Guided;
         [Tooltip("Размер уровня, м.")]
         public Vector2 Size;
         public bool Mirrored;

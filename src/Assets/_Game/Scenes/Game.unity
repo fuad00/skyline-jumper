@@ -119,7 +119,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &47494582
+--- !u!1 &355504744
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -127,9 +127,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 47494585}
-  - component: {fileID: 47494584}
-  - component: {fileID: 47494583}
+  - component: {fileID: 355504747}
+  - component: {fileID: 355504746}
+  - component: {fileID: 355504745}
   m_Layer: 0
   m_Name: GameRoot
   m_TagString: Untagged
@@ -137,13 +137,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &47494583
+--- !u!114 &355504745
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 47494582}
+  m_GameObject: {fileID: 355504744}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 55e6b899a0aab4cd59fc198851ce3731, type: 3}
@@ -157,14 +157,14 @@ MonoBehaviour:
   _stickmanConfig: {fileID: 11400000, guid: c8cbbb8bbb8ab44b09a039e869ddf090, type: 2}
   _art: {fileID: 11400000, guid: bfbd5e2244d544e3f8480b50b127e3d8, type: 2}
   _sounds: {fileID: 11400000, guid: 68f31f3b5677b44eaa1ce065f09ad5a1, type: 2}
-  _camera: {fileID: 1796097452}
---- !u!114 &47494584
+  _camera: {fileID: 596884133}
+--- !u!114 &355504746
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 47494582}
+  m_GameObject: {fileID: 355504744}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 19102, guid: 0000000000000000e000000000000000, type: 0}
@@ -181,13 +181,13 @@ MonoBehaviour:
   m_PivotReferenceSize: 0
   m_Pivot: 0
   m_WorldSpaceCollider: {fileID: 0}
---- !u!4 &47494585
+--- !u!4 &355504747
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 47494582}
+  m_GameObject: {fileID: 355504744}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -196,7 +196,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1796097451
+--- !u!1 &596884132
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -204,9 +204,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1796097454}
-  - component: {fileID: 1796097452}
-  - component: {fileID: 1796097453}
+  - component: {fileID: 596884135}
+  - component: {fileID: 596884133}
+  - component: {fileID: 596884134}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -214,13 +214,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!20 &1796097452
+--- !u!20 &596884133
 Camera:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1796097451}
+  m_GameObject: {fileID: 596884132}
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
@@ -265,21 +265,21 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!81 &1796097453
+--- !u!81 &596884134
 AudioListener:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1796097451}
+  m_GameObject: {fileID: 596884132}
   m_Enabled: 1
---- !u!4 &1796097454
+--- !u!4 &596884135
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1796097451}
+  m_GameObject: {fileID: 596884132}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 30, z: -10}
@@ -292,5 +292,5 @@ Transform:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 1796097454}
-  - {fileID: 47494585}
+  - {fileID: 596884135}
+  - {fileID: 355504747}

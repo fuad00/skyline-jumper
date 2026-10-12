@@ -161,17 +161,15 @@
 
 /* ---------- hint ---------- */
 
-.hint-box {
+/* a level's hint: text standing in the world, like the original's (GameRoot moves it with the camera) */
+.tutorial {
     position: absolute;
-    bottom: 40px;
-    align-self: center;
-    padding: 16px 44px;
-}
-
-.hint {
-    font-size: 44px;
+    translate: -50% -50%;
     color: rgb(16, 16, 18);
     -unity-text-align: middle-center;
+    -unity-font-style: bold;
+    text-shadow: 0px 0px 6px rgba(255, 255, 255, 0.95);
+    white-space: nowrap;
     margin: 0;
     padding: 0;
 }

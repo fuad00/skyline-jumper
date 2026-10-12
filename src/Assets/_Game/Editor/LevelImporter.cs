@@ -331,6 +331,7 @@ namespace StickmanJumper.EditorTools
             scene.MaxFlySpeedYRaw = Num(keys, "maxFlySpeedY");
             scene.Night = Str(keys, "nightMode") == "1";
             scene.Earthquakes = Str(keys, "earthquakes") == "1";
+            scene.Guided = Str(keys, "guidedLevel") == "1";
 
             Vector2 Point(float x, float y) => new Vector2((mirror ? width - x : x) / UnitsPerMeter, y / UnitsPerMeter);
             Rect Box(Dictionary<string, object> n)
@@ -345,6 +346,7 @@ namespace StickmanJumper.EditorTools
             var inter = new List<Rect>();
             var interLeft = new List<bool>();
             var lights = new List<LevelScene.LightSource>();
+            var tutorials = new List<LevelScene.Tutorial>();
             foreach (var n in nodes)
             {
                 string type = Str(n, "Type"), cls = Str(n, "className");
@@ -403,6 +405,27 @@ namespace StickmanJumper.EditorTools
                             break;
                     }
                 }
+                else if (type == "LandscapeNodeText" && NodeKeys(n).ContainsKey("requiredState"))
+                {
+                    var k = NodeKeys(n);
+                    float F(string key) => k.TryGetValue(key, out var v) && float.TryParse(v, NumberStyles.Float, CultureInfo.InvariantCulture, out var f) ? f : 0f;
+                    // Line breaks are stored as the two characters «\n», with spaces to centre the lines.
+                    string text = string.Join("\n", Str(n, "text").Replace("\\n", "\n").Split('\n').Select(l => l.Trim()));
+                    int lines = Mathf.Max(1, text.Split('\n').Length);
+                    string trigger = k.TryGetValue("trigger", out var t) ? t : string.Empty;
+                    var triggerNode = string.IsNullOrEmpty(trigger) ? null : nodes.FirstOrDefault(o => Str(o, "Name") == trigger);
+                    tutorials.Add(new LevelScene.Tutorial
+                    {
+                        Key = Str(n, "Name"),
+                        Text = text,
+                        Position = Point(Num(n, "position.x"), Num(n, "position.y")),
+                        LineHeight = Num(n, "size.y") / lines / UnitsPerMeter,
+                        RequiredState = Mathf.RoundToInt(F("requiredState")),
+                        ShowDelay = F("showDelay"),
+                        WaitForTouch = F("waitForTouch") > 0.5f,
+                        Trigger = triggerNode != null ? Box(triggerNode) : default,
+                    });
+                }
                 else if (type == "LandscapeNodeCamera")
                 {
                     var p = Point(Num(n, "position.x"), Num(n, "position.y"));
@@ -419,6 +442,7 @@ namespace StickmanJumper.EditorTools
             scene.InterPlatforms = inter.ToArray();
             scene.InterLeft = interLeft.ToArray();
             scene.Lights = lights.ToArray();
+            scene.Tutorials = tutorials.ToArray();
         }
 
         /// <summary>Картинка — стена (в оригинале сквозь бьющееся стекло и птиц пролетают).</summary>

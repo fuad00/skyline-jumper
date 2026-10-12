@@ -82,6 +82,10 @@ namespace StickmanJumper.Gameplay
         /// <summary>Свой предел скорости свободного падения уровня (maxFlySpeedY), м/с (0 — общий).</summary>
         public float MaxFallSpeed { get; private set; }
         public int TargetIndex { get; private set; }
+        /// <summary>Подсказки, стоящие в уровне (только у уровней оригинала, где появляется новое).</summary>
+        public IReadOnlyList<LevelScene.Tutorial> Tutorials { get; private set; } = new LevelScene.Tutorial[0];
+        /// <summary>Обучающий уровень: тапы работают, только пока видна подсказка.</summary>
+        public bool Guided { get; private set; }
 
         /// <summary>Вся интересная часть уровня (для режима обзора): от стартовой крыши до цели.</summary>
         public Rect Overview { get; private set; }
@@ -133,6 +137,8 @@ namespace StickmanJumper.Gameplay
                 Wind = level.Wind,
                 TimeLimit = Mathf.Max(1f, level.TimeLimit),
                 MaxFallSpeed = level.MaxFallSpeed,
+                Tutorials = scene.Tutorials ?? new LevelScene.Tutorial[0],
+                Guided = scene.Guided,
             };
             // The street under everything (maps from the builder may also reach left of zero).
             float streetFrom = Mathf.Min(0f, scene.Runway.xMin, scene.Platform.xMin);

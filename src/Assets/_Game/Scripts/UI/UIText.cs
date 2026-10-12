@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Globalization;
 using StickmanJumper.Core;
 using UnityEngine;
@@ -32,10 +33,26 @@ namespace StickmanJumper.UI
         public const string LogoTop = "Stickman.";
         public const string LogoBottom = "jumper";
 
-        public static string HintReady => T("Тапни — отойти для разбега", "Tap to step back for a run-up");
-        public static string HintBackingUp => T("Тапни — развернуться и бежать!", "Tap to turn and run!");
-        public static string HintRunning => T("Тапни у края — прыжок!", "Tap at the edge to jump!");
-        public static string HintFreefall => T("Тапни — парашют!", "Tap to open the parachute!");
+        /// <summary>
+        /// Подсказки, стоящие в уровнях (как в оригинале — только там, где появляется новое). Ключ — «уровень:имя надписи».
+        /// Нет перевода — текст из файла уровня.
+        /// </summary>
+        static readonly Dictionary<string, (string ru, string en)> Tutorials = new Dictionary<string, (string, string)>
+        {
+            ["easy1:Tutorial1"] = ("Тапни — отойди назад для разбега", "Tap to walk back for a run-up"),
+            ["easy1:Tutorial2"] = ("Тапни ещё раз — разбегись", "Tap again to run and gain speed"),
+            ["easy1:Tutorial3"] = ("Ещё тап — прыжок!", "One more tap to jump off"),
+            ["easy1:Tutorial4"] = ("Самое время раскрыть парашют.\nТапни!", "Now is a good time to open your\nparachute. Tap again!"),
+            ["easy2:Tutorial1"] = ("Приземлись, пока не вышло время!", "Land before time's up!"),
+            ["advanced1:Tutorial1"] = ("Панель ветра показывает\nего направление и силу", "The wind display shows\nwind direction and speed"),
+            ["advanced6:Tutorial1"] = ("Можно пролететь сквозь леса?\nМожно!", "Can I fly through scaffolds?\nYes I can!"),
+            ["construction1:Tutorial1"] = ("Разобьём пару стёкол…", "Let's smash some window panes…"),
+            ["expert1:Tutorial1"] = ("Иногда нужна промежуточная посадка.\nПрыгай на площадку с зелёным флажком", "Some jumps need an intermediate landing.\nJump to the landing zone with the green flag"),
+            ["expert1:Tutorial2"] = ("Теперь прыгай к последней площадке", "Now jump to the final landing zone"),
+        };
+
+        public static string Tutorial(string levelId, string key, string fallback) =>
+            Tutorials.TryGetValue($"{levelId}:{key}", out var t) ? T(t.ru, t.en) : fallback;
 
         public static string Wind => T("ВЕТЕР", "WIND");
         public static string Pause => T("пауза", "pause");
@@ -195,17 +212,6 @@ namespace StickmanJumper.UI
             JumpOutcome.MissedPlatform => (T("мимо", "missed"), T("КРЫШИ", "PLATFORM")),
             JumpOutcome.TimesUp => (T("время", "time's"), T("ВЫШЛО", "UP")),
             _ => (string.Empty, string.Empty)
-        };
-
-        /// <param name="canopyUsed">Купол уже раскрыт или оторван — подсказка «парашют» больше не нужна.</param>
-        public static string Hint(JumpPhase phase, bool canopyUsed) => phase switch
-        {
-            JumpPhase.Ready => HintReady,
-            JumpPhase.BackingUp => HintBackingUp,
-            JumpPhase.AtBackWall => HintBackingUp,
-            JumpPhase.Running => HintRunning,
-            JumpPhase.Airborne => canopyUsed ? string.Empty : HintFreefall,
-            _ => string.Empty
         };
 
         public static string LevelLine(int stage, int level) => En ? $"STAGE {stage} — LEVEL {level}" : $"ЭТАП {stage} — ПРЫЖОК {level}";

@@ -72,7 +72,12 @@ namespace StickmanJumper
         Transform _world;
         int _stage = -1, _levelIndex = -1;
 
-        float _finishedAtReal = -1f, _calmSince = -1f, _slowMoUntilReal, _timeScaleBeforePause = 1f;
+        float _finishedAtReal = -1f, _jumpedAtReal = -1f, _slowMoUntilReal, _timeScaleBeforePause = 1f;
+        bool _summaryTapped;
+        // Like the original (LrGame: timeTillSummarySceen, quickShowSummary): after a landing the summary comes in 2 s;
+        // after a crash it waits for a tap. A tap shows it at once, but only later than 0.5 s after the jump.
+        const float SummaryDelay = 2f;
+        const float SummaryTapAfterJump = 0.5f;
         int _runIndex;
         bool _tapQueued, _slowMoUsed, _playing;
 
@@ -120,6 +125,11 @@ namespace StickmanJumper
             _audio.SetMusic(_save.Data.Music);
 
             _ui = new GameUI(GetComponent<UIDocument>().rootVisualElement, _art);
+            if (Debug.isDebugBuild)
+            {
+                Application.deepLinkActivated += url => _devLink = url;
+                if (!string.IsNullOrEmpty(Application.absoluteURL)) _devLink = Application.absoluteURL;
+            }
             _ui.Tapped += () => _tapQueued = true;
             _ui.PlayClicked += () => { _audio.Click(); ShowStageSelect(); };
             _ui.SettingsClicked += () => { _audio.Click(); ShowSettings(); };
@@ -283,6 +293,74 @@ namespace StickmanJumper
             StartLevel(_menuStage, index);
         }
 
+        string _devLink;
+        TutorialRunner _tutorial;
+        int _tutorialShowing = -1;
+        float _tutorialAlpha;
+        IPanel _panel;
+        // The original fades a hint in and out over half a second (CCFadeTo 0.5).
+        const float TutorialFade = 0.5f;
+        // The text stands in the world, but never smaller than this (the level overview at the start is far away), panel points.
+        const float TutorialMinFont = 40f;
+
+        /// <summary>Подсказки текущей попытки (null — у уровня их нет).</summary>
+        public TutorialRunner Tutorial => _tutorial;
+
+        void NewTutorials()
+        {
+            _tutorial = _layout.Tutorials.Count > 0 || _layout.Guided ? new TutorialRunner(_layout.Tutorials, _layout.Guided) : null;
+            if (_tutorial != null) _tutorial.Shown += i => { _tutorialShowing = i; };
+            _tutorialShowing = -1;
+            _tutorialAlpha = 0f;
+            _ui.HideTutorial();
+        }
+
+        /// <summary>Надпись подсказки стоит в мире на своём месте: каждый кадр переводим её в точки экрана.</summary>
+        void UpdateTutorialText(float realDt)
+        {
+            if (_tutorial == null || _tutorialShowing < 0 || !_playing || _ui.SummaryVisible)
+            {
+                _ui.HideTutorial();
+                return;
+            }
+            bool on = _tutorial.Active == _tutorialShowing && Autopilot == null;
+            _tutorialAlpha = Mathf.MoveTowards(_tutorialAlpha, on ? 1f : 0f, realDt / TutorialFade);
+            if (!on && _tutorialAlpha <= 0f)
+            {
+                _tutorialShowing = -1;
+                _ui.HideTutorial();
+                return;
+            }
+            var t = _tutorial.Items[_tutorialShowing];
+            _panel ??= GetComponent<UIDocument>().rootVisualElement.panel;
+            Vector2 center = RuntimePanelUtils.CameraTransformWorldToPanel(_panel, t.Position, _camera);
+            Vector2 top = RuntimePanelUtils.CameraTransformWorldToPanel(_panel, t.Position + Vector2.up * t.LineHeight, _camera);
+            float font = Mathf.Max(TutorialMinFont, Mathf.Abs(center.y - top.y) * 0.75f);
+            _ui.SetTutorial(UIText.Tutorial(_level.Id, t.Key, t.Text), center, font, _tutorialAlpha);
+        }
+
+        /// <summary>
+        /// Только в тестовой сборке: ссылка stickmanjumper://level/advanced4 сразу открывает этот уровень, без замков —
+        /// чтобы проверять уровни на симуляторе (xcrun simctl openurl booted stickmanjumper://level/advanced4).
+        /// </summary>
+        void OpenDevLink(string url)
+        {
+            if (!Debug.isDebugBuild || string.IsNullOrEmpty(url)) return;
+            int at = url.IndexOf("level/", StringComparison.OrdinalIgnoreCase);
+            if (at < 0) return;
+            string id = Uri.UnescapeDataString(url.Substring(at + 6)).Trim('/', ' ');
+            for (int s = 0; s < _catalog.Stages.Length; s++)
+            {
+                int i = _catalog.LevelIds(s).IndexOf(id);
+                if (i < 0) continue;
+                if (Paused) SetPaused(false);
+                _ui.HideDialog();
+                StartLevel(s, i);
+                return;
+            }
+            Debug.LogWarning($"[DevLink] no level «{id}»");
+        }
+
         /// <summary>Начать уровень (экран выбора, «дальше», автотест).</summary>
         public void StartLevel(int stage, int level)
         {
@@ -429,12 +507,14 @@ namespace StickmanJumper
             _runIndex++;
             Time.timeScale = 1f;
             _finishedAtReal = -1f;
-            _calmSince = -1f;
+            _jumpedAtReal = -1f;
+            _summaryTapped = false;
             _tapQueued = false;
             _slowMoUsed = false;
             _slowMoUntilReal = 0f;
             _stickman?.Destroy();
             _session.Reset();
+            NewTutorials(); // every attempt shows the level's hints again, like the original
             _levelView.SetLastRunFlag(_session.LastRunStartX);
             _levelView.ResetPlatformFlags();
             _stickman = new StickmanView(_world, _stickmanConfig, _art) { RagdollSpeedCap = _flightConfig.RagdollSpeedCap };
@@ -479,6 +559,12 @@ namespace StickmanJumper
 
         void Update()
         {
+            if (_devLink != null)
+            {
+                string link = _devLink;
+                _devLink = null;
+                OpenDevLink(link);
+            }
             float dt = Time.deltaTime;
             float realDt = Time.unscaledDeltaTime;
             _ui.ApplySafeArea(Screen.safeArea, Screen.width, Screen.height);
@@ -494,15 +580,24 @@ namespace StickmanJumper
                 return;
             }
 
+            // The level's hints (only when a person plays): they may stop the game until a tap, and on the guided level
+            // a tap without a hint on screen does nothing — like the original.
+            bool tutorials = _playing && Autopilot == null && _tutorial != null && !_ui.SummaryVisible;
+            if (tutorials) _tutorial.Update(_session, dt);
             if (_playing)
             {
-                if (_tapQueued && !_ui.SummaryVisible) _session.Tap();
+                if (_tapQueued && !_ui.SummaryVisible)
+                {
+                    if (_session.Phase.IsFinished()) _summaryTapped = true; // the jump is over: a tap asks for the summary
+                    else if (!tutorials || _tutorial.OnTap()) _session.Tap();
+                }
             }
             _tapQueued = false;
-            _session.Advance(dt, Autopilot != null && (_playing || _demo) ? _pilotStep : null); // the pilot acts on every physics step
+            float gameDt = tutorials && _tutorial.Holding ? 0f : dt; // a hint waiting for a tap stops the game
+            _session.Advance(gameDt, Autopilot != null && (_playing || _demo) ? _pilotStep : null); // the pilot acts on every physics step
 
-            if (!_stickman.IsRagdoll) _stickman.UpdateAlive(_session, dt);
-            _stickman.UpdateDetached(dt); // a canopy that was torn or cut away keeps flying
+            if (!_stickman.IsRagdoll) _stickman.UpdateAlive(_session, gameDt);
+            _stickman.UpdateDetached(gameDt); // a canopy that was torn or cut away keeps flying
 
             Vector2 focus = _stickman.IsRagdoll ? _stickman.Center : _session.Feet;
             var cameraPhase = _session.Phase;
@@ -513,12 +608,12 @@ namespace StickmanJumper
             _levelView.SetTargetLights(TargetLightsNow());
             _levelView.Update(_camera, Time.time, dt);
             _audio.Update(_session, _stickman.IsRagdoll, realDt);
+            UpdateTutorialText(realDt);
 
             if (_playing && !_ui.SummaryVisible)
             {
                 _ui.SetHud(_session.TimeLeft, _layout.TimeLimit, _layout.Wind, _level.WindMax, _cameraRig.Overview);
                 _ui.SetMinimap(_layout, focus, _session.LastRunStartX);
-                _ui.SetHint(UIText.Hint(_session.Phase, _session.CanopyDeployed || _session.CanopyCut));
             }
 
             UpdateSlowMo();
@@ -554,6 +649,9 @@ namespace StickmanJumper
             _audio.OnEvent(e, _session);
             switch (e)
             {
+                case JumpEvent.Jumped:
+                    _jumpedAtReal = Time.unscaledTime;
+                    break;
                 case JumpEvent.StartedBackingUp:
                     _cameraRig.Overview = false;
                     break;
@@ -610,20 +708,11 @@ namespace StickmanJumper
             float now = Time.unscaledTime;
             if (_finishedAtReal < 0f) _finishedAtReal = now;
 
-            // After a landing give the original's animation time: the canopy drops, then he cheers (or sulks).
-            float wait = _session.Phase == JumpPhase.Landed ? 2.2f : _session.Phase == JumpPhase.TimeUp ? 0.6f : 4f;
-            if (_stickman.IsRagdoll)
-            {
-                // Show the result once the body has settled (or after 4 s anyway).
-                if (_stickman.RagdollSpeed < 0.6f)
-                {
-                    if (_calmSince < 0f) _calmSince = now;
-                    if (now - _calmSince > 0.6f) wait = 0f;
-                }
-                else _calmSince = -1f;
-            }
-            if (now - _finishedAtReal < wait) return;
-            ShowSummary();
+            float sinceJump = now - (_jumpedAtReal >= 0f ? _jumpedAtReal : _finishedAtReal);
+            bool tapped = _summaryTapped && sinceJump > SummaryTapAfterJump;
+            _summaryTapped = false; // too early a tap is simply ignored, like in the original
+            bool crashed = _session.Phase == JumpPhase.Crashed;
+            if (tapped || (!crashed && now - _finishedAtReal >= SummaryDelay)) ShowSummary();
         }
 
         void ShowSummary()
