@@ -355,7 +355,8 @@ namespace StickmanJumper.EditorTools
             PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
             PlayerSettings.allowedAutorotateToLandscapeLeft = true;
             PlayerSettings.allowedAutorotateToLandscapeRight = true;
-            PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android, "com.stickmanjumper.game");
+            PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android, BuildTools.BundleId);
+            PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.iOS, BuildTools.BundleId);
             PlayerSettings.SetScriptingBackend(NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
         }

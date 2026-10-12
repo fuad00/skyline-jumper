@@ -172,7 +172,7 @@ PlayerSettings:
   applicationIdentifier:
     Android: com.stickmanjumper.game
     Standalone: com.Unity-Technologies.com.unity.template.urp-blank
-    iPhone: com.Unity-Technologies.com.unity.template.urp-blank
+    iPhone: com.stickmanjumper.game
   buildNumber:
     Standalone: 0
     VisionOS: 0
@@ -196,7 +196,7 @@ PlayerSettings:
   StripUnusedMeshComponents: 0
   strictShaderVariantMatching: 0
   VertexChannelCompressionMask: 4054
-  iPhoneSdkVersion: 988
+  iPhoneSdkVersion: 989
   iOSSimulatorArchitecture: 1
   iOSTargetOSVersionString: 15.0
   tvOSSdkVersion: 0

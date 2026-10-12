@@ -40,7 +40,7 @@ namespace StickmanJumper.EditorTools
 
     /// <summary>
     /// Валит любую сборку игрока, пока в ней есть заглушки. Единственное исключение (решено 2026-10-12):
-    /// Development-сборка для теста на своём телефоне (BuildTools.BuildAndroidTest, файл «…-INTERNAL-TEST…»).
+    /// Development-сборка для теста на своём телефоне или в симуляторе на этом Mac (BuildTools, путь «…-INTERNAL-TEST…»).
     /// Релизная сборка с заглушками не собирается никогда.
     /// </summary>
     public sealed class PlaceholderBuildBlocker : IPreprocessBuildWithReport
