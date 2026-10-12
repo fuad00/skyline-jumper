@@ -173,9 +173,10 @@ namespace StickmanJumper.EditorTools
                     level.Title = $"Прыжок {number}";
                     level.Scene = scene;
                     level.TimeLimit = Num(keys, "ccMaxTime", 30f);
-                    level.Wind = (scene.Mirrored ? -scene.WindRaw : scene.WindRaw) / UnitsPerMeter;
-                    level.WindMax = 3f; // strongest wind in the original's files: 130 units/s ≈ 3 m/s
-                    level.MaxFallSpeed = Mathf.Abs(scene.MaxFlySpeedYRaw) / UnitsPerMeter;
+                    // Speeds are in the original's physics units (half the file's): 22 per metre.
+                    level.Wind = (scene.Mirrored ? -scene.WindRaw : scene.WindRaw) / PictureShapes.PhysicsUnitsPerMeter;
+                    level.WindMax = Maps.MapData.MaxWind; // strongest wind in the original's files: 130 units/s ≈ 6 m/s
+                    level.MaxFallSpeed = Mathf.Abs(scene.MaxFlySpeedYRaw) / PictureShapes.PhysicsUnitsPerMeter;
                     level.ThreeStarTime = level.TimeLimit * 0.6f;
                     EditorUtility.SetDirty(level);
                     stageLevels.Add(level);

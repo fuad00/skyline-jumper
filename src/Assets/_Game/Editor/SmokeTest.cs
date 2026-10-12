@@ -167,7 +167,7 @@ namespace StickmanJumper.EditorTools
                     CloseUp(Wait(0.6), "c01_stand");
                     if (Wait(1.2) && _pendingSnap == null) { Snap("03_ready_overview"); g.Autopilot = new Autopilot(); Next(); }
                     break;
-                case 15: // run A: autopilot plans run-up + canopy height and should land on the flag
+                case 15: // run A: autopilot plans the run-up, opens the canopy right before touchdown and should land on the flag
                     if (s.Phase == JumpPhase.Airborne && !s.CanopyDeployed) _peak = Mathf.Max(_peak, s.Feet.y - s.Level.RoofY);
                     ShotWhen(s.Phase == JumpPhase.BackingUp && s.Level.EdgeX - s.Feet.x > 2.2f, "04_walk_back_facing_away");
                     ShotWhen(s.Phase == JumpPhase.Running && s.Velocity.x > 5f, "05_running");
@@ -175,12 +175,9 @@ namespace StickmanJumper.EditorTools
                     CloseUp(s.Phase == JumpPhase.Running && s.Velocity.x > 6f, "c03_run");
                     CloseUp(s.Phase == JumpPhase.Airborne && s.Elapsed - _takeoffAt > 0.12f && s.Velocity.y > 0f, "c04_takeoff", 2f);
                     CloseUp(s.Phase == JumpPhase.Airborne && !s.CanopyDeployed && s.Velocity.y < -8f, "c05_dive", 2f);
-                    CloseUp(s.Phase == JumpPhase.Airborne && s.CanopyDeployed && s.Canopy > 0.3f && s.Canopy < 0.8f, "c06_canopy_opening", 4.5f, 2.5f);
-                    CloseUp(s.Phase == JumpPhase.Airborne && s.Canopy >= 1f && s.Feet.y > s.Level.TargetY + 4f, "c07_canopy", 4.5f, 2.5f);
                     if (s.Phase != JumpPhase.Airborne) _takeoffAt = s.Elapsed;
                     ShotWhen(s.Phase == JumpPhase.Airborne && s.Velocity.y > 0f && s.Feet.x > s.Level.EdgeX + 0.6f, "06_takeoff");
                     ShotWhen(s.Phase == JumpPhase.Airborne && !s.CanopyDeployed && s.Velocity.y < -14f, "07_freefall_guide");
-                    ShotWhen(s.Phase == JumpPhase.Airborne && s.Canopy >= 1f && s.Feet.y < s.Level.TargetY + 8f, "08_canopy");
                     ShotWhenDelayed(s.Phase == JumpPhase.Landed, "09_landed", 0.9);
                     if (s.Phase == JumpPhase.Landed && !Armed.ContainsKey("c08")) Armed["c08"] = EditorApplication.timeSinceStartup;
                     CloseUp(s.Phase == JumpPhase.Landed && EditorApplication.timeSinceStartup - Armed["c08"] > 0.5, "c08_landed_canopy_falls", 3f, 1f);
@@ -221,7 +218,7 @@ namespace StickmanJumper.EditorTools
                     CloseUp(g.Stickman.IsRagdoll && EditorApplication.timeSinceStartup - Armed["c11"] > 1.5, "c11_stumble_ragdoll", 2.2f);
                     if (g.UI.SummaryVisible) { Report("run C missed edge   ", g, JumpOutcome.Died); Next(); }
                     break;
-                case 22: // run D: canopy opens, then a tap cuts it away → he tumbles (ragdoll) and crashes
+                case 22: // run D: canopy right after the push-off (it opens fully — close-ups), then a tap cuts it away → ragdoll, crash
                     if (_runDStep == 0)
                     {
                         g.Autopilot = new Autopilot { DesiredRunUp = 6f, OpenRightAway = true };
@@ -231,7 +228,10 @@ namespace StickmanJumper.EditorTools
                     }
                     if (_runDStep == 1)
                     {
-                        if (s.CanopyDeployed && s.Canopy >= 1f)
+                        CloseUp(s.Phase == JumpPhase.Airborne && s.CanopyDeployed && s.Canopy > 0.3f && s.Canopy < 0.8f, "c06_canopy_opening", 4.5f, 2.5f);
+                        CloseUp(s.Phase == JumpPhase.Airborne && s.Canopy >= 1f && Shots.Contains("c06_canopy_opening"), "c07_canopy", 4.5f, 2.5f);
+                        ShotWhen(s.Phase == JumpPhase.Airborne && Shots.Contains("c07_canopy"), "08_canopy");
+                        if (s.CanopyDeployed && Shots.Contains("08_canopy") && _pendingSnap == null)
                         {
                             g.Autopilot = null;
                             g.Tap();
@@ -305,7 +305,7 @@ namespace StickmanJumper.EditorTools
                     var jump = AssetDatabase.LoadAssetAtPath<JumpConfig>("Assets/_Game/Config/JumpConfig.asset");
                     var flight = AssetDatabase.LoadAssetAtPath<FlightConfig>("Assets/_Game/Config/FlightConfig.asset");
                     var level = MapLevel.ToLevel(b.Editor.Map, b.Editor.Catalog);
-                    var plan = Autopilot.Plan(new JumpSession(LevelLayout.Build(level, jump), jump, flight), 0.5f, 2f);
+                    var plan = Autopilot.Plan(new JumpSession(LevelLayout.Build(level, jump), jump, flight), 0.5f);
                     MapLevel.Destroy(level);
                     if (!plan.Found)
                     {
@@ -315,7 +315,7 @@ namespace StickmanJumper.EditorTools
                     }
                     b.UI.Test?.Invoke();
                     if (g.PlayingMap == null) Fail("«Test» did not start the map");
-                    g.Autopilot = new Autopilot { DesiredRunUp = plan.RunUp, OpenAtY = plan.OpenY };
+                    g.Autopilot = Autopilot.FromPlan(plan);
                     Next();
                     break;
                 }

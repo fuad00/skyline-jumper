@@ -179,7 +179,7 @@ namespace StickmanJumper.Tests
                     failures.Add($"{level.Id}: no run-up/canopy combination lands on the target");
                     continue;
                 }
-                TestKit.RunToEnd(session, new Autopilot { DesiredRunUp = plan.RunUp, OpenAtY = plan.OpenY });
+                TestKit.RunToEnd(session, Autopilot.FromPlan(plan));
                 if (session.Outcome != JumpOutcome.WellDone) failures.Add($"{level.Id}: replay of the plan ended {session.Outcome}");
                 else if (session.LandingDistance > 2.5f) failures.Add($"{level.Id}: best plan lands {session.LandingDistance:0.0} m from the flag");
             }

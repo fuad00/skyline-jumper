@@ -11,6 +11,11 @@ namespace StickmanJumper.Gameplay
     {
         /// <summary>Пикселей картинки на метр при масштабе 1 (масштаб редактора оригинала: 44 единицы = 1 м).</summary>
         public const float PixelsPerMeter = 44f;
+        /// <summary>
+        /// Единиц физики оригинала (скорости, ветер, maxFlySpeedY) в метре: при загрузке уровня он умножает координаты файла
+        /// на 0.5 и дальше считает в них (reference/disasm/FINDINGS.md). То же число — FlightConfig.PixelsPerMeter.
+        /// </summary>
+        public const float PhysicsUnitsPerMeter = PixelsPerMeter * 0.5f;
         /// <summary>Тоньше этого кусок столкновения не считаем (линии-разделители, ошибки разметки), м.</summary>
         const float MinThickness = 0.05f;
 

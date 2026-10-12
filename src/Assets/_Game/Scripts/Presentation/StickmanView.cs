@@ -74,6 +74,9 @@ namespace StickmanJumper.Presentation
             }
         }
 
+        /// <summary>Предел скорости частей тела после падения, м/с (из FlightConfig; 0 — без предела).</summary>
+        public float RagdollSpeedCap { get; set; }
+
         /// <summary>Какая анимация оригинала сейчас играет (null — простой стикмен). Для автотеста.</summary>
         public CharacterClip Clip => _rig?.Clip;
 
@@ -237,7 +240,7 @@ namespace StickmanJumper.Presentation
                     spinSharpness = 30f;
                     break;
                 case JumpPhase.Landed:
-                    _rig.Play(Or(s.LandedOnTarget ? _art.AnimWins : _art.AnimLoose, _art.AnimStand), false);
+                    _rig.Play(Or(s.Outcome == JumpOutcome.WellDone ? _art.AnimWins : _art.AnimLoose, _art.AnimStand), false);
                     canopy = s.CanopyDeployed;
                     break;
                 case JumpPhase.TimeUp:
@@ -298,7 +301,7 @@ namespace StickmanJumper.Presentation
                         sharpness = 22f;
                         return StickmanPose.Crouch(Mathf.Clamp01(s.ImpactVelocity.magnitude / 6f), _cfg);
                     }
-                    return s.LandedOnTarget ? StickmanPose.Cheer(_phaseTime, _cfg) : StickmanPose.Shrug(_time, _cfg);
+                    return s.Outcome == JumpOutcome.WellDone ? StickmanPose.Cheer(_phaseTime, _cfg) : StickmanPose.Shrug(_time, _cfg);
                 case JumpPhase.TimeUp:
                     return StickmanPose.Shrug(_time, _cfg);
                 default:
@@ -398,10 +401,11 @@ namespace StickmanJumper.Presentation
         {
             if (_ragdoll) return;
             _ragdoll = true;
+            if (RagdollSpeedCap > 0f) velocity = Vector2.ClampMagnitude(velocity, RagdollSpeedCap);
             if (_rig != null)
             {
                 _rig.DetachCanopy(_root.parent, velocity);
-                _torso = _rig.BecomeRagdoll(_root.parent, velocity, seed, _cfg.Mass, _cfg.CrashSpin, speed => RagdollImpact?.Invoke(speed));
+                _torso = _rig.BecomeRagdoll(_root.parent, velocity, seed, _cfg.Mass, _cfg.CrashSpin, speed => RagdollImpact?.Invoke(speed), RagdollSpeedCap);
                 return;
             }
             _canopy.Detach(velocity);
@@ -414,6 +418,7 @@ namespace StickmanJumper.Presentation
             {
                 var bone = _bones[i];
                 var rb = bone.T.gameObject.AddComponent<Rigidbody2D>();
+                bone.T.gameObject.AddComponent<RagdollSpeedLimit>().Max = RagdollSpeedCap;
                 rb.mass = massUnit * (i == (int)B.Torso ? 3f : i == (int)B.Head ? 1f : 0.7f);
                 rb.linearDamping = 0.05f;
                 rb.angularDamping = 0.4f;
@@ -508,6 +513,22 @@ namespace StickmanJumper.Presentation
             if (_halo != null) _halo.transform.position = Center;
             if (_rig != null) _rig.UpdateDetached(dt);
             else _canopy.UpdateDetached(dt);
+        }
+    }
+
+    /// <summary>Предел скорости части тела после падения (оригинал: 900 px/с), м/с; 0 — без предела.</summary>
+    public sealed class RagdollSpeedLimit : MonoBehaviour
+    {
+        public float Max;
+        Rigidbody2D _body;
+
+        void Awake() => _body = GetComponent<Rigidbody2D>();
+
+        void FixedUpdate()
+        {
+            if (_body == null || Max <= 0f) return;
+            var v = _body.linearVelocity;
+            if (v.sqrMagnitude > Max * Max) _body.linearVelocity = v.normalized * Max;
         }
     }
 

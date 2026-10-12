@@ -63,7 +63,7 @@ namespace StickmanJumper.Maps
             }
             scene.Size = new Vector2(Mathf.Max(1f, x1), Mathf.Max(1f, y1));
             scene.Night = map.Night;
-            scene.WindRaw = map.Wind * PictureShapes.PixelsPerMeter;
+            scene.WindRaw = map.Wind * PictureShapes.PhysicsUnitsPerMeter;
 
             var level = ScriptableObject.CreateInstance<LevelConfig>();
             level.name = map.Name;

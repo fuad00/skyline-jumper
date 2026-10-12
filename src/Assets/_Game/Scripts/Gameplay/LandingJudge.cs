@@ -1,4 +1,3 @@
-using StickmanJumper.Config;
 using UnityEngine;
 
 namespace StickmanJumper.Gameplay
@@ -13,17 +12,25 @@ namespace StickmanJumper.Gameplay
         Slide
     }
 
-    /// <summary>Что происходит при касании поверхности.</summary>
+    /// <summary>
+    /// Что происходит при касании поверхности (как в оригинале). Встать на ноги можно только на крышу сверху, под куполом
+    /// и не быстрее мягкой посадки (110 px/с полной скорости; при ветре на уровне хватает и вертикальной). Без купола любое
+    /// касание — разбился. Стена: сильнее порога (у оригинала — любое касание) — разбился, иначе скользит.
+    /// </summary>
     public static class LandingJudge
     {
-        /// <param name="canopy">Купол раскрыт: стропы и купол цепляются за стену — любое касание стены валит стикмена.</param>
-        public static ContactResult Judge(Vector2 normal, Vector2 velocity, FlightConfig cfg, bool canopy = false)
+        /// <param name="canopy">Купол раскрыт.</param>
+        public static ContactResult Judge(Vector2 normal, Vector2 velocity, in FlightParams p, bool canopy)
         {
             if (normal.y > 0.7f)
-                return velocity.magnitude <= cfg.SafeLandingSpeed ? ContactResult.Landed : ContactResult.Crash;
-            if (canopy) return ContactResult.Crash;
+            {
+                if (!canopy) return ContactResult.Crash;
+                bool soft = velocity.magnitude <= p.SoftLandingSpeed
+                            || (p.WindyLandingByVertical && p.Wind != 0f && Mathf.Abs(velocity.y) < p.SoftLandingSpeed);
+                return soft ? ContactResult.Landed : ContactResult.Crash;
+            }
             float intoSurface = -Vector2.Dot(velocity, normal);
-            return intoSurface > cfg.WallCrashSpeed ? ContactResult.Crash : ContactResult.Slide;
+            return intoSurface > p.WallCrashSpeed ? ContactResult.Crash : ContactResult.Slide;
         }
     }
 }

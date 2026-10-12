@@ -67,7 +67,7 @@ namespace StickmanJumper.Maps
     public class MapData
     {
         public const int CurrentVersion = 1;
-        public const float MinTime = 5f, MaxTime = 120f, MaxWind = 3f;
+        public const float MinTime = 5f, MaxTime = 120f, MaxWind = 6f;
 
         public int Version = CurrentVersion;
         [Tooltip("Имя файла на телефоне (у каждой карты своё).")]

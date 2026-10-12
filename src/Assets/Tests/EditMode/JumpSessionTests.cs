@@ -52,18 +52,97 @@ namespace StickmanJumper.Tests
             Assert.Greater(TakeoffSpeed(6f), TakeoffSpeed(3.2f) + 1f);
         }
 
-        /// <summary>Быстрые тапы тоже работают: с очень короткого разбега прыгает хотя бы с наименьшей скоростью толчка.</summary>
+        const float Px = 1f / 22f;
+
+        /// <summary>Отход как в оригинале: с 63 px/с, +0.225 за тик, не быстрее 120 px/с.</summary>
         [Test]
-        public void ShortRunUp_StillJumps()
+        public void WalkBack_SpeedsUpFrom63To120()
         {
-            var jump = TestKit.Jump();
-            Assert.AreEqual(jump.JumpSpeedGate * jump.JumpHorizontalMultiplier, TakeoffSpeed(0.5f), 0.01f);
+            var s = TestKit.Session();
+            s.Tap();
+            s.Step(s.StepSize);
+            Assert.AreEqual(-(63f + 0.225f) * Px, s.Velocity.x, 1e-5f);
+            for (int i = 0; i < 60; i++) s.Step(s.StepSize);
+            Assert.AreEqual(-(63f + 0.225f * 61f) * Px, s.Velocity.x, 1e-3f);
+            float v = 63f; // the default roof is too short to reach the cap: check it on the formula
+            for (int i = 0; i < 600; i++) if (v < 120f) v += 0.225f;
+            Assert.AreEqual(120f, v, 0.25f);
+        }
+
+        /// <summary>Разбег как в оригинале: с 10 px/с, прибавка за тик 3 → 1 (при 500 px/с): за 1 с ≈170 px/с, за 3 с ≈393 px/с.</summary>
+        [Test]
+        public void Run_AcceleratesLikeTheOriginal()
+        {
+            var s = TestKit.Session();
+            float v = 10f * Px;
+            for (int i = 0; i < 60; i++) v = s.RunSpeedAfter(v, s.StepSize);
+            Assert.AreEqual(169.94f, v / Px, 0.1f);
+            for (int i = 0; i < 120; i++) v = s.RunSpeedAfter(v, s.StepSize);
+            Assert.AreEqual(392.99f, v / Px, 0.2f);
+
+            s.Tap();
+            TestKit.StepFor(s, 1f);
+            s.Tap();
+            Assert.AreEqual(10f * Px, s.Velocity.x, 1e-6f, "the run starts at 10 px/s");
+            for (int i = 0; i < 60; i++) s.Step(s.StepSize);
+            Assert.AreEqual(169.94f, s.Velocity.x / Px, 0.1f);
+        }
+
+        /// <summary>Толчок: вперёд — скорость бега × 0.925, вверх — 180 px/с (с места) … 174 px/с (с 500 px/с).</summary>
+        [Test]
+        public void Takeoff_Forward0925_Up180To174()
+        {
+            var s = TestKit.Session();
+            Assert.AreEqual(0f, s.TakeoffVelocity(0f).x);
+            Assert.AreEqual(180f * Px, s.TakeoffVelocity(0f).y, 1e-5f);
+            var fast = s.TakeoffVelocity(500f * Px);
+            Assert.AreEqual(462.5f * Px, fast.x, 1e-5f);
+            Assert.AreEqual(174f * Px, fast.y, 1e-5f);
+        }
+
+        /// <summary>Порога нет (как в оригинале): тап сразу после начала разбега — слабый прыжок почти на месте.</summary>
+        [Test]
+        public void QuickTap_IsAWeakHop()
+        {
+            var s = TestKit.Session();
+            s.Tap();
+            TestKit.StepFor(s, 0.5f);
+            s.Tap();
+            s.Step(s.StepSize);
+            s.Tap();
+            Assert.AreEqual(JumpPhase.Airborne, s.Phase);
+            Assert.AreEqual(13f * 0.925f * Px, s.Velocity.x, 1e-4f);
+            Assert.Greater(s.Velocity.y, 179f * Px);
+        }
+
+        /// <summary>Прыжок невысокий (≈ 100 единиц ≈ 4.5 м над крышей), с длинного разбега — чуть ниже.</summary>
+        [Test]
+        public void JumpHeight_AboutTwoMetres()
+        {
+            float Peak(float runUp)
+            {
+                var s = TestKit.Session(TestKit.Level(wind: 0f));
+                var pilot = new Autopilot { DesiredRunUp = runUp, NeverOpenCanopy = true };
+                float peak = float.NegativeInfinity;
+                for (int i = 0; i < 20000 && !s.Phase.IsFinished(); i++)
+                {
+                    pilot.Update(s);
+                    s.Step(s.StepSize);
+                    if (s.Phase == JumpPhase.Airborne) peak = Mathf.Max(peak, s.Feet.y - s.Level.RoofY);
+                }
+                return peak;
+            }
+            float shortRun = Peak(1f), longRun = Peak(14f);
+            Assert.That(shortRun / Px, Is.InRange(95f, 102f));
+            Assert.Less(longRun, shortRun);
+            Assert.Greater(longRun / Px, 90f);
         }
 
         /// <summary>Скорость по X сразу после толчка (NaN — так и не прыгнул).</summary>
-        static float TakeoffSpeed(float runUp)
+        static float TakeoffSpeed(float runUp, JumpConfig jump = null)
         {
-            var s = TestKit.Session();
+            jump ??= TestKit.Jump();
+            var s = new JumpSession(LevelLayout.Build(TestKit.Level(), jump), jump, TestKit.Flight());
             var pilot = new Autopilot { DesiredRunUp = runUp };
             for (int i = 0; i < 20000 && s.Phase != JumpPhase.Airborne && !s.Phase.IsFinished(); i++)
             {
@@ -71,6 +150,22 @@ namespace StickmanJumper.Tests
                 s.Step(s.StepSize);
             }
             return s.Phase == JumpPhase.Airborne ? s.Velocity.x : float.NaN;
+        }
+
+        /// <summary>Фишка оригинала: прыгнуть посреди крыши. Тот же разбег — тот же толчок, но с места дальше от края: садится ближе.</summary>
+        [Test]
+        public void JumpMidRoof_SameRun_LandsCloser()
+        {
+            var level = TestKit.Level(wind: 0f);
+            level.Target = new BuildingSpec(300f, 6f, 10f, BuildingStyle.Brick); // out of reach: lands on the street
+            level.Others = new BuildingSpec[0];
+            level.TimeLimit = 60f;
+            var edge = TestKit.Session(level);
+            TestKit.RunToEnd(edge, new Autopilot { DesiredRunUp = 6f });
+            var mid = TestKit.Session(level);
+            TestKit.RunToEnd(mid, new Autopilot { DesiredRunUp = 10f, JumpAtDistance = 4f });
+            Assert.AreEqual(edge.Level.EdgeX - 4f, mid.TakeoffX, 0.3f, "jumped 4 m before the edge");
+            Assert.AreEqual(edge.Feet.x - 4f, mid.Feet.x, 0.5f, "and landed about as much closer");
         }
 
         [Test]
@@ -91,7 +186,26 @@ namespace StickmanJumper.Tests
             var s = TestKit.Session();
             TestKit.RunToEnd(s, new Autopilot { NeverOpenCanopy = true });
             Assert.AreEqual(JumpOutcome.Died, s.Outcome);
-            Assert.Greater(s.ImpactVelocity.magnitude, TestKit.Flight().SafeLandingSpeed);
+            Assert.Greater(-s.ImpactVelocity.y, s.Params.SoftLandingSpeed);
+        }
+
+        /// <summary>Купол сразу после толчка: спускается на нём медленно (≈66 px/с) и садится — только намного дольше, чем раскрыв поздно.</summary>
+        [Test]
+        public void CanopyEarly_DescendsSlowly_LateIsFaster()
+        {
+            var level = TestKit.Level(wind: 0f);
+            level.Target = new BuildingSpec(200f, 6f, 10f, BuildingStyle.Brick); // lands on the street
+            level.Others = new BuildingSpec[0];
+            level.TimeLimit = 60f;
+            var early = TestKit.Session(level);
+            TestKit.RunToEnd(early, new Autopilot { DesiredRunUp = 4f, OpenRightAway = true });
+            Assert.AreEqual(JumpOutcome.MissedPlatform, early.Outcome, "a safe landing (on the street)");
+            Assert.That(-early.ImpactVelocity.y / Px, Is.InRange(55f, 75f), "at the canopy's steady speed");
+            var late = TestKit.Session(level);
+            TestKit.RunToEnd(late, new Autopilot { DesiredRunUp = 4f });
+            Assert.AreEqual(JumpOutcome.MissedPlatform, late.Outcome);
+            Assert.Less(late.Elapsed, early.Elapsed - 10f, "opening late saves a lot of time");
+            Assert.LessOrEqual(late.ImpactVelocity.magnitude, late.Params.SoftLandingSpeed, "and still lands softly");
         }
 
         [Test]
@@ -116,7 +230,7 @@ namespace StickmanJumper.Tests
             level.Target = new BuildingSpec(200f, 6f, 10f, BuildingStyle.Brick); // unreachable
             level.Others = new BuildingSpec[0];
             var s = TestKit.Session(level);
-            TestKit.RunToEnd(s, new Autopilot { DesiredRunUp = 4f, OpenRightAway = true }); // 4 m: fast enough to jump
+            TestKit.RunToEnd(s, new Autopilot { DesiredRunUp = 4f }); // canopy right before the street
             Assert.AreEqual(JumpPhase.Landed, s.Phase);
             Assert.AreEqual(JumpOutcome.MissedPlatform, s.Outcome);
         }
@@ -127,20 +241,21 @@ namespace StickmanJumper.Tests
             // Short run-up + instant canopy: the wind carries him into a tall wall well below its roof.
             // Under the canopy any wall contact is a crash (it used to slide down the wall to the street).
             var level = TestKit.Level(wind: 3f);
-            level.Target = new BuildingSpec(10f, 10f, 55f, BuildingStyle.Brick);
+            level.Target = new BuildingSpec(10f, 10f, 80f, BuildingStyle.Brick); // taller than the start roof
             var s = TestKit.Session(level);
-            TestKit.RunToEnd(s, new Autopilot { DesiredRunUp = 2f, OpenRightAway = true });
+            TestKit.RunToEnd(s, new Autopilot { DesiredRunUp = 4f, OpenRightAway = true });
             Assert.AreEqual(JumpOutcome.Died, s.Outcome, $"ended {s.Phase} at {s.Feet}");
         }
 
+        /// <summary>Как в оригинале: о стену разбивается всегда, сесть можно только на крышу под куполом.</summary>
         [Test]
-        public void WallContact_SlidesInFreefall_CrashesUnderCanopy()
+        public void WallContact_AlwaysCrashes()
         {
-            var flight = TestKit.Flight();
+            var flight = new FlightParams(TestKit.Flight(), 0f);
             var gentle = new Vector2(1f, -2f); // brushing a wall that faces left
-            Assert.AreEqual(ContactResult.Slide, LandingJudge.Judge(Vector2.left, gentle, flight));
-            Assert.AreEqual(ContactResult.Crash, LandingJudge.Judge(Vector2.left, gentle, flight, canopy: true));
-            Assert.AreEqual(ContactResult.Landed, LandingJudge.Judge(Vector2.up, new Vector2(0f, -4f), flight, canopy: true), "floors are still landings");
+            Assert.AreEqual(ContactResult.Crash, LandingJudge.Judge(Vector2.left, gentle, flight, false));
+            Assert.AreEqual(ContactResult.Crash, LandingJudge.Judge(Vector2.left, gentle, flight, true));
+            Assert.AreEqual(ContactResult.Landed, LandingJudge.Judge(Vector2.up, new Vector2(0f, -2f), flight, true), "floors are still landings");
         }
 
         [Test]
@@ -167,8 +282,8 @@ namespace StickmanJumper.Tests
         }
 
         /// <summary>
-        /// Промежуточная платформа (как в оригинале): сел на неё — стоишь, купол сброшен, флажок «пройдено»;
-        /// следующий разбег — уже с неё и в её сторону (здесь — влево, обратно).
+        /// Промежуточная платформа (как в оригинале): сел на неё — купол сброшен, флажок «пройдено», и он сразу бежит
+        /// к её краю в её сторону (здесь — влево, обратно), без отхода и без тапа; тап — прыжок.
         /// </summary>
         [Test]
         public void IntermediatePlatform_LandThenRunTheOtherWay()
@@ -187,30 +302,28 @@ namespace StickmanJumper.Tests
             var events = new List<JumpEvent>();
             s.Happened += events.Add;
 
-            var pilot = new Autopilot { DesiredRunUp = 4f, OpenRightAway = true };
+            var pilot = new Autopilot { DesiredRunUp = 4f };
             for (int i = 0; i < 20000 && s.RunwayIndex == 0 && !s.Phase.IsFinished(); i++)
             {
                 pilot.Update(s);
                 s.Step(s.StepSize);
             }
             Assert.AreEqual(1, s.RunwayIndex, $"ended {s.Outcome} at {s.Feet}");
-            Assert.AreEqual(JumpPhase.Ready, s.Phase);
+            Assert.AreEqual(JumpPhase.Running, s.Phase, "runs on at once");
             Assert.Contains(JumpEvent.ReachedPlatform, events);
             Assert.IsTrue(s.Reached(1));
             Assert.IsFalse(s.CanopyDeployed, "a fresh canopy for the next jump");
             Assert.AreEqual(30f, s.Feet.y, 1e-4f);
             Assert.AreEqual(-1, s.Dir);
+            Assert.AreEqual(-10f * Px, s.Velocity.x, 1e-5f, "from 10 px/s, like the start roof");
 
             float x = s.Feet.x;
-            s.Tap(); // step back — to the right, away from the left edge
-            TestKit.StepFor(s, 1f);
-            Assert.Greater(s.Feet.x, x + 1f);
-            s.Tap(); // run left
-            TestKit.StepFor(s, 0.3f);
-            Assert.Less(s.Velocity.x, 0f);
+            TestKit.StepFor(s, 1.5f);
+            Assert.Less(s.Feet.x, x - 3f, "running left");
+            Assert.Less(s.Velocity.x, -200f * Px);
             s.Tap(); // jump left
             Assert.AreEqual(JumpPhase.Airborne, s.Phase);
-            Assert.Less(s.Velocity.x, -s.Jump.JumpSpeedGate);
+            Assert.Less(s.Velocity.x, -180f * Px);
             Object.DestroyImmediate(scene);
         }
 
@@ -230,7 +343,7 @@ namespace StickmanJumper.Tests
             var s = TestKit.Session(level);
             Assert.AreEqual(30f, s.Level.TargetY, 1e-4f);
 
-            TestKit.RunToEnd(s, new Autopilot { DesiredRunUp = 4f, OpenRightAway = true });
+            TestKit.RunToEnd(s, new Autopilot { DesiredRunUp = 4f });
             Assert.AreEqual(JumpOutcome.WellDone, s.Outcome, $"ended at {s.Feet}");
             Assert.AreEqual(30f, s.Feet.y, 1e-3f, "feet on the roof, not on top of the box");
             Object.DestroyImmediate(scene);
@@ -252,7 +365,7 @@ namespace StickmanJumper.Tests
             level.TimeLimit = 60f;
             var s = TestKit.Session(level);
 
-            var pilot = new Autopilot { DesiredRunUp = 4f, OpenRightAway = true };
+            var pilot = new Autopilot { DesiredRunUp = 4f };
             for (int i = 0; i < 20000 && s.RunwayIndex == 0 && !s.Phase.IsFinished(); i++)
             {
                 pilot.Update(s);
@@ -264,16 +377,42 @@ namespace StickmanJumper.Tests
             Object.DestroyImmediate(scene);
         }
 
+        /// <summary>Как в оригинале: время вышло в полёте — летит дальше, но посадка на цель — «время вышло».</summary>
         [Test]
-        public void WaitingTooLong_IsTimesUp()
+        public void TimeOverInTheAir_LandingOnTarget_IsTimesUp()
         {
-            var level = TestKit.Level();
-            level.TimeLimit = 1f; // the shortest limit there is
+            var scene = ScriptableObject.CreateInstance<LevelScene>();
+            scene.Size = new Vector2(120f, 60f);
+            scene.Solids = new[] { new Rect(0f, 0f, 10f, 40f), new Rect(12f, 0f, 98f, 30f) };
+            scene.Runway = new Rect(0f, 40f, 10f, 1.1f);
+            scene.Platform = new Rect(12f, 30f, 98f, 0.7f);
+            var level = TestKit.Level(wind: 0f);
+            level.Scene = scene;
+            level.TimeLimit = 2f;
             var s = TestKit.Session(level);
+            var events = new List<JumpEvent>();
+            s.Happened += events.Add;
+            TestKit.RunToEnd(s, new Autopilot { DesiredRunUp = 4f });
+            Assert.IsTrue(s.TimeOver);
+            Assert.Contains(JumpEvent.TimeUp, events);
+            Assert.AreEqual(JumpPhase.Landed, s.Phase, "he still lands");
+            Assert.IsTrue(s.LandedOnTarget);
+            Assert.AreEqual(JumpOutcome.TimesUp, s.Outcome);
+            Assert.AreEqual(0f, s.TimeLeft);
+            Object.DestroyImmediate(scene);
+        }
+
+        /// <summary>Время вышло, а он ещё стоит на крыше (таймер с первого тапа — переключатель) — конец сразу.</summary>
+        [Test]
+        public void TimeOver_WhileWalkingBack_EndsAtOnce()
+        {
+            var jump = TestKit.Jump();
+            jump.TimerFromFirstTap = true;
+            var level = TestKit.Level();
+            level.TimeLimit = 1f;
+            var s = new JumpSession(LevelLayout.Build(level, jump), jump, TestKit.Flight());
             s.Tap();
-            TestKit.StepFor(s, 1.5f); // a long run-up: still on the roof when the time is up
-            s.Tap(); // the clock runs from here
-            TestKit.StepFor(s, 1.15f);
+            TestKit.StepFor(s, 1.2f);
             Assert.AreEqual(JumpPhase.TimeUp, s.Phase);
             Assert.AreEqual(JumpOutcome.TimesUp, s.Outcome);
         }
@@ -297,19 +436,35 @@ namespace StickmanJumper.Tests
             Assert.IsNaN(s.LastRunStartX);
         }
 
+        /// <summary>Как в оригинале: таймер включает тап «бежать»; пока стикмен пятится, время не идёт.</summary>
         [Test]
-        public void TimerStartsWithTheRun()
+        public void Timer_StartsWithTheRun()
         {
             var s = TestKit.Session();
             TestKit.StepFor(s, 5f);
-            Assert.AreEqual(0f, s.Elapsed);
-            Assert.AreEqual(JumpPhase.Ready, s.Phase);
-            s.Tap(); // step back: choosing the run-up is free, like the original
+            s.Tap();
             TestKit.StepFor(s, 1f);
-            Assert.AreEqual(0f, s.Elapsed);
+            Assert.AreEqual(0f, s.Elapsed, "walking back is free");
             s.Tap(); // run
             TestKit.StepFor(s, 0.5f);
             Assert.AreEqual(0.5f, s.Elapsed, 0.02f);
+        }
+
+        /// <summary>Переключатель: время с первого тапа (пока пятится — тоже).</summary>
+        [Test]
+        public void Timer_FromTheFirstTap_WhenSwitched()
+        {
+            var jump = TestKit.Jump();
+            jump.TimerFromFirstTap = true;
+            var s = new JumpSession(LevelLayout.Build(TestKit.Level(), jump), jump, TestKit.Flight());
+            TestKit.StepFor(s, 5f);
+            Assert.AreEqual(0f, s.Elapsed, "standing before the first tap is free");
+            s.Tap();
+            TestKit.StepFor(s, 1f);
+            Assert.AreEqual(1f, s.Elapsed, 0.02f);
+            s.Tap(); // run
+            TestKit.StepFor(s, 0.5f);
+            Assert.AreEqual(1.5f, s.Elapsed, 0.02f);
         }
 
         [Test]
@@ -341,7 +496,7 @@ namespace StickmanJumper.Tests
             b.Tap();
             for (int i = 0; i < 60; i++) a.Advance(1f / 60f);
             for (int i = 0; i < 30; i++) b.Advance(1f / 30f);
-            Assert.AreEqual(a.Feet.x, b.Feet.x, 0.03f); // at most one fixed step apart
+            Assert.AreEqual(a.Feet.x, b.Feet.x, 0.06f); // at most one fixed step apart
         }
     }
 

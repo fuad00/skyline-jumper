@@ -12,15 +12,35 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a9037108e93f46dfa730149377a9503, type: 3}
   m_Name: FlightConfig
   m_EditorClassIdentifier: StickmanJumper::StickmanJumper.Config.FlightConfig
-  Gravity: 9.81
-  FreefallTerminalSpeed: 28
-  FreefallGlideSpeed: 60
+  PixelsPerMeter: 22
+  TicksPerSecond: 60
+  StepsPerSecond: 60
+  GravityPx: 165
+  FallSpeedCapPx: 1000
+  WindScale: 3
+  FlightWindPerTick: 0.000725
+  CanopyBrakeRising: 0.795
+  CanopyBrakeFalling: {x: 0.895, y: 0.7}
+  CanopyBrakeRefPx: 500
+  CanopyBrakeMaxSpeedPx: 800
   CanopyOpenTime: 0.6
-  CanopyTerminalSpeed: 6.5
-  CanopyBrakeX: 6
   CanopyCutDelay: 0.3
-  SafeLandingSpeed: 7
-  WallCrashSpeed: 3
+  CanopyGravity: {x: 0.04, y: 0.85}
+  CanopyLiftFromPx: -300
+  CanopyLiftToPx: 100
+  CanopyDragFromPx: 68
+  CanopyDragWind: {x: 0.055, y: 0.195}
+  CanopyDragWindTicks: 75
+  CanopyDrag: {x: 0.975, y: 0.955}
+  CanopyDragTicks: 30
+  CanopySlowSidePx: 65
+  CanopyDragStep: 0.0095
+  CanopyDragStart: 0.965
+  CanopyDragSideBonus: 0.01
+  CanopyWindPerTick: 0.0075
+  SoftLandingSpeedPx: 110
+  WindyLandingByVertical: 1
+  WallCrashSpeedPx: 0
+  RagdollSpeedCapPx: 900
   BodyWidth: 0.5
   BodyHeight: 1.8
-  StepsPerSecond: 120

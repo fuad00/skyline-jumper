@@ -12,12 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f87deea3c86ba4db8a5485ce34e3e2ff, type: 3}
   m_Name: JumpConfig
   m_EditorClassIdentifier: StickmanJumper::StickmanJumper.Config.JumpConfig
-  WalkBackSpeed: 2.5
+  WalkBackStartSpeedPx: 63
+  WalkBackGainPerTick: 0.225
+  WalkBackMaxSpeedPx: 120
   StartDistanceFromEdge: 0.8
   BackWallMargin: 0.8
-  RunAcceleration: 3.75
-  RunMaxSpeed: 22.7
-  JumpUpSpeed: 11.36
-  JumpHorizontalMultiplier: 2
-  JumpSpeedGate: 4.66
+  RunStartSpeedPx: 10
+  RunGainPerTick: {x: 3, y: 1}
+  RunGainRefSpeedPx: 500
+  JumpForwardFactor: 0.925
+  JumpUpSpeedPx: {x: 180, y: 174}
+  JumpUpRefSpeedPx: 500
   EdgeOverrun: 0.15
+  TimerFromFirstTap: 0

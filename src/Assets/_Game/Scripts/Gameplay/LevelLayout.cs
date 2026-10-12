@@ -79,7 +79,7 @@ namespace StickmanJumper.Gameplay
         public float ArrowX { get; private set; }
         public float Wind { get; private set; }
         public float TimeLimit { get; private set; }
-        /// <summary>Своя предельная скорость падения уровня, м/с (0 — общая).</summary>
+        /// <summary>Свой предел скорости свободного падения уровня (maxFlySpeedY), м/с (0 — общий).</summary>
         public float MaxFallSpeed { get; private set; }
         public int TargetIndex { get; private set; }
 

@@ -157,7 +157,7 @@ namespace StickmanJumper
                 for (int l = 0; _catalog.Stages[s] != null && l < _catalog.Stages[s].Levels.Length; l++)
                 {
                     var level = _catalog.Level(s, l);
-                    if (level != null && !float.IsNaN(level.DemoRunUp) && !float.IsNaN(level.DemoOpenY)) _demoLevels.Add((s, l));
+                    if (level != null && !float.IsNaN(level.DemoRunUp)) _demoLevels.Add((s, l));
                 }
 
             LoadLevel(0, 0);
@@ -386,7 +386,7 @@ namespace StickmanJumper
             _audio.Quiet = true;
             LoadLevel(pick.stage, pick.level);
             var level = _catalog.Level(pick.stage, pick.level);
-            Autopilot = new Autopilot { DesiredRunUp = level.DemoRunUp, OpenAtY = level.DemoOpenY };
+            Autopilot = new Autopilot { DesiredRunUp = level.DemoRunUp, JumpAtDistance = level.DemoJumpAt, OpenAtY = level.DemoOpenY };
         }
 
         /// <summary>Заставка доиграла (сел) — небольшая пауза полюбоваться, потом следующий случайный уровень.</summary>
@@ -436,7 +436,7 @@ namespace StickmanJumper
             _session.Reset();
             _levelView.SetLastRunFlag(_session.LastRunStartX);
             _levelView.ResetPlatformFlags();
-            _stickman = new StickmanView(_world, _stickmanConfig, _art);
+            _stickman = new StickmanView(_world, _stickmanConfig, _art) { RagdollSpeedCap = _flightConfig.RagdollSpeedCap };
             _stickman.SetNight(_levelView.Night);
             _stickman.RagdollImpact += OnRagdollImpact;
             _audio.ResetRun();
@@ -504,8 +504,7 @@ namespace StickmanJumper
             _stickman.UpdateDetached(dt); // a canopy that was torn or cut away keeps flying
 
             Vector2 focus = _stickman.IsRagdoll ? _stickman.Center : _session.Feet;
-            // Standing on an intermediate platform is not the level start: no overview there, keep following him.
-            var cameraPhase = _session.Phase == JumpPhase.Ready && _session.RunwayIndex > 0 ? JumpPhase.AtBackWall : _session.Phase;
+            var cameraPhase = _session.Phase;
             if (_playing || _demo) _cameraRig.Update(focus, _session.Velocity, cameraPhase, _stickman.IsRagdoll, _layout.Overview, realDt);
             else _cameraRig.UpdateFixed(MenuCenter, _cameraConfig.SizeOnRoof, realDt);
             _levelView.SetPlayerLight(focus + Vector2.up);

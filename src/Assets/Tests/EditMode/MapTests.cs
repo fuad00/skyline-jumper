@@ -191,7 +191,7 @@ namespace StickmanJumper.Tests
                 Assert.AreEqual(map.TimeLimit, level.TimeLimit);
                 Assert.AreEqual("map:" + map.Id, level.Id);
 
-                var plan = Autopilot.Plan(new JumpSession(layout, jump, flight), 0.5f, 1f);
+                var plan = Autopilot.Plan(new JumpSession(layout, jump, flight), 0.5f);
                 Assert.IsTrue(plan.Found, "the autopilot finds a way onto the flag");
             }
             finally
@@ -352,7 +352,7 @@ namespace StickmanJumper.Tests
                 var layout = LevelLayout.Build(level, jump);
                 Assert.AreEqual(map.Start.Y, layout.RoofY, 0.01f);
                 Assert.Greater(layout.RoofY, 20f);
-                var plan = Autopilot.Plan(new JumpSession(layout, jump, flight), 0.5f, 2f);
+                var plan = Autopilot.Plan(new JumpSession(layout, jump, flight), 0.5f);
                 Assert.IsTrue(plan.Found, "the template can be landed");
             }
             finally

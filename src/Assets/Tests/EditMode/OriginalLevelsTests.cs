@@ -56,8 +56,8 @@ namespace StickmanJumper.Tests
         }
 
         /// <summary>
-        /// Первый этап оригинала («новичок») проходится нашей физикой хотя бы на 7 уровнях из 10. Числа разбега и прыжка —
-        /// оригинала, числа полёта пока подобраны (CalibrationSweep). Когда будут настоящие числа полёта — поднять до 10.
+        /// Первый этап оригинала («новичок») проходится нашей физикой хотя бы на 9 уровнях из 10 (физика — из кода оригинала,
+        /// reference/disasm/FINDINGS.md).
         /// Сторож: если правка физики ломает уровни оригинала — узнаем сразу.
         /// </summary>
         [Test]
@@ -67,7 +67,7 @@ namespace StickmanJumper.Tests
             var jump = Jump();
             var flight = Flight();
             var failed = rookie.Where(l => !Solvable(LevelLayout.Build(l, jump), jump, flight, out _)).Select(l => l.Id).ToList();
-            Assert.LessOrEqual(failed.Count, 3, "not solvable: " + string.Join(" ", failed));
+            Assert.LessOrEqual(failed.Count, 1, "not solvable: " + string.Join(" ", failed));
         }
 
         /// <summary>
@@ -86,108 +86,33 @@ namespace StickmanJumper.Tests
                 foreach (float frame in new[] { 1f / 60f, 1f / 30f })
                 {
                     var s = new JumpSession(LevelLayout.Build(level, jump), jump, flight);
-                    var pilot = new Autopilot { DesiredRunUp = level.DemoRunUp, OpenAtY = level.DemoOpenY };
+                    var pilot = new Autopilot { DesiredRunUp = level.DemoRunUp, JumpAtDistance = level.DemoJumpAt, OpenAtY = level.DemoOpenY };
                     for (int i = 0; i < 6000 && !s.Phase.IsFinished(); i++) s.Advance(frame, x => pilot.Update(x));
                     if (s.Outcome != JumpOutcome.WellDone) failed.Add($"{level.Id} @{1f / frame:0} fps: {s.Outcome}");
                 }
             Assert.IsEmpty(failed, string.Join("\n", failed));
         }
 
-        /// <summary>Решается ли уровень (автопилот находит разбег и купол, повтор плана садится на цель вовремя).</summary>
+        /// <summary>Решается ли уровень (автопилот находит разбег, место прыжка и высоту раскрытия; повтор плана садится на цель вовремя).</summary>
         static bool Solvable(LevelLayout layout, JumpConfig jump, FlightConfig flight, out float miss)
         {
             miss = float.NaN;
             float run = layout.EdgeX - layout.BackLimitX;
-            float drop = layout.RoofY - layout.TargetY;
-            var plan = Autopilot.Plan(new JumpSession(layout, jump, flight), Mathf.Max(1f, run / 6f), Mathf.Max(3f, drop / 18f));
+            var plan = Autopilot.Plan(new JumpSession(layout, jump, flight), Mathf.Max(0.5f, run / 12f));
             if (!plan.Found) return false;
             var s = new JumpSession(layout, jump, flight);
-            TestKit.RunToEnd(s, new Autopilot { DesiredRunUp = plan.RunUp, OpenAtY = plan.OpenY }, 120f);
+            TestKit.RunToEnd(s, Autopilot.FromPlan(plan), 120f);
             miss = s.LandingDistance;
             return s.Outcome == JumpOutcome.WellDone;
         }
 
-        /// <summary>
-        /// Подбор физики по уровням оригинала (их размеры и лимиты времени — единственные «замеры» его физики):
-        /// перебирает предельную скорость падения, «планирование» по X и максимальную скорость бега,
-        /// считает, сколько уровней с одним прыжком проходятся. Пишет Logs/physics-calibration.txt.
-        /// </summary>
-        [Test, Explicit("long; a calibration sweep")]
-        public void CalibrationSweep()
-        {
-            var levels = All().Where(x => x.level.Scene.InterPlatforms.Length == 0).Select(x => x.level).ToList();
-            var baseJump = Jump();
-            var baseFlight = Flight();
-            var sb = new StringBuilder();
-            var ci = CultureInfo.InvariantCulture;
-            sb.AppendLine($"single-jump levels: {levels.Count}");
-            // Run and jump numbers are the original's (gameplay_reference.json); gravity, the fall-speed cap,
-            // the glide and the canopy descent are not known — those are swept.
-            foreach (float gravity in new[] { 9.81f })
-            foreach (float fall in new[] { 22f, 28f, 34f })
-            foreach (float glide in new[] { 60f, 150f })
-            foreach (float canopy in new[] { 6.5f })
-            {
-                var jump = Object.Instantiate(baseJump);
-                var flight = Object.Instantiate(baseFlight);
-                flight.Gravity = gravity;
-                flight.FreefallTerminalSpeed = fall;
-                flight.FreefallGlideSpeed = glide;
-                flight.CanopyTerminalSpeed = canopy;
-                var failed = new List<string>();
-                foreach (var level in levels)
-                    if (!Solvable(LevelLayout.Build(level, jump), jump, flight, out _)) failed.Add(level.Id);
-                sb.AppendLine(string.Format(ci, "g {0,5:0.0} fall {1,4:0} glide {2,4:0} canopy {3,4:0.0} | solvable {4,2}/{5} (easy {6}/10) | failed: {7}",
-                    gravity, fall, glide, canopy, levels.Count - failed.Count, levels.Count,
-                    levels.Count(l => l.Id.StartsWith("easy")) - failed.Count(f => f.StartsWith("easy")), string.Join(" ", failed)));
-                Object.DestroyImmediate(jump);
-                Object.DestroyImmediate(flight);
-            }
-            Directory.CreateDirectory("Logs");
-            File.WriteAllText("Logs/physics-calibration.txt", sb.ToString());
-            Assert.Pass(sb.ToString());
-        }
-
-        /// <summary>Сила ветра: в каких единицах ветер в файлах оригинала (проверка на этапе «наверху ветрено»).</summary>
-        [Test, Explicit("calibration")]
-        public void WindScaleSweep()
-        {
-            var levels = All().Where(x => x.level.Scene.InterPlatforms.Length == 0 && x.level.Id.StartsWith("advanced")).Select(x => x.level).ToList();
-            var jump = Object.Instantiate(Jump());
-            var flight = Object.Instantiate(Flight());
-            jump.RunMaxSpeed = 32f;
-            flight.FreefallTerminalSpeed = 28f;
-            flight.FreefallGlideSpeed = 150f;
-            flight.CanopyTerminalSpeed = 6.5f;
-            var sb = new StringBuilder();
-            foreach (float k in new[] { 1f, 3f, 6f, -1f, -3f })
-            {
-                var failed = new List<string>();
-                foreach (var level in levels)
-                {
-                    var copy = Object.Instantiate(level);
-                    copy.Wind *= k;
-                    if (!Solvable(LevelLayout.Build(copy, jump), jump, flight, out _)) failed.Add(level.Id);
-                    Object.DestroyImmediate(copy);
-                }
-                sb.AppendLine($"wind ×{k}: solvable {levels.Count - failed.Count}/{levels.Count} | failed: {string.Join(" ", failed)}");
-            }
-            Directory.CreateDirectory("Logs");
-            File.WriteAllText("Logs/wind-scale.txt", sb.ToString());
-            Assert.Pass(sb.ToString());
-        }
-
-        /// <summary>Сетка исходов «разбег × высота раскрытия» для нескольких уровней (W — сел на цель, M — мимо, D — разбился, T — время).</summary>
+        /// <summary>Сетка исходов «разбег × высота раскрытия над целью» (W — сел на цель, M — мимо, D — разбился, T — время).</summary>
         [Test, Explicit("diagnostics")]
         public void OutcomeGrid()
         {
-            var ids = new[] { "easy4", "easy5", "easy6", "advanced2" };
-            var jump = Object.Instantiate(Jump());
-            var flight = Object.Instantiate(Flight());
-            flight.Gravity = 9.81f;
-            flight.FreefallTerminalSpeed = 13f;
-            flight.FreefallGlideSpeed = 60f;
-            flight.CanopyTerminalSpeed = 6.5f;
+            var ids = new[] { "easy1", "easy4", "easy6", "advanced2" };
+            var jump = Jump();
+            var flight = Flight();
             var sb = new StringBuilder();
             var ci = CultureInfo.InvariantCulture;
             foreach (var (_, level) in All().Where(x => ids.Contains(x.level.Id)))
@@ -200,13 +125,13 @@ namespace StickmanJumper.Tests
                 var runs = new List<float>();
                 for (float r = 0.5f; r <= run + 0.01f; r += Mathf.Max(1f, run / 10f)) { runs.Add(r); sb.Append(string.Format(ci, "{0,5:0}", r)); }
                 sb.AppendLine();
-                for (float openY = layout.RoofY - 2f; openY >= layout.TargetY + 4f; openY -= Mathf.Max(3f, (layout.RoofY - layout.TargetY) / 20f))
+                foreach (float above in new[] { float.NaN, 4f, 8f, 12f, 17f, 24f, 34f, 48f })
                 {
-                    sb.Append(string.Format(ci, "{0,9:0} ", openY));
+                    sb.Append(float.IsNaN(above) ? "     auto " : string.Format(ci, "{0,8:0.0}m ", above));
                     foreach (float r in runs)
                     {
                         var s = new JumpSession(layout, jump, flight);
-                        TestKit.RunToEnd(s, new Autopilot { DesiredRunUp = r, OpenAtY = openY }, 120f);
+                        TestKit.RunToEnd(s, new Autopilot { DesiredRunUp = r, OpenAtY = layout.TargetY + above }, 120f);
                         char c = s.Outcome == JumpOutcome.WellDone ? 'W' : s.Outcome == JumpOutcome.MissedPlatform ? 'M' : s.Outcome == JumpOutcome.Died ? 'D' : 'T';
                         sb.Append(string.Format(ci, "  {0}{1,3:0}", c, s.Feet.x - layout.ArrowX));
                     }
@@ -240,12 +165,12 @@ namespace StickmanJumper.Tests
                 float drop = layout.RoofY - layout.TargetY;
                 float dx = layout.ArrowX - layout.EdgeX;
                 var template = new JumpSession(layout, jump, flight);
-                var plan = Autopilot.Plan(template, Mathf.Max(1f, run / 6f), Mathf.Max(3f, drop / 18f));
+                var plan = Autopilot.Plan(template, Mathf.Max(0.5f, run / 12f));
                 string result;
                 if (plan.Found)
                 {
                     var s = new JumpSession(layout, jump, flight);
-                    TestKit.RunToEnd(s, new Autopilot { DesiredRunUp = plan.RunUp, OpenAtY = plan.OpenY }, 120f);
+                    TestKit.RunToEnd(s, Autopilot.FromPlan(plan), 120f);
                     result = s.Outcome == JumpOutcome.WellDone
                         ? string.Format(ci, "OK  miss {0:0.0} m, {1:0.0}/{2:0} s", s.LandingDistance, s.Elapsed, level.TimeLimit)
                         : $"plan replay ended {s.Outcome} ({s.Elapsed:0.0}/{level.TimeLimit:0} s)";
@@ -253,9 +178,9 @@ namespace StickmanJumper.Tests
                 }
                 else
                 {
-                    // How far does the longest jump get? Full run-up, canopy as low as possible.
+                    // How far does the longest jump get? Full run-up, canopy right before touchdown.
                     var s = new JumpSession(layout, jump, flight);
-                    TestKit.RunToEnd(s, new Autopilot { DesiredRunUp = run, OpenAtY = layout.TargetY + 6f }, 120f);
+                    TestKit.RunToEnd(s, new Autopilot { DesiredRunUp = run }, 120f);
                     result = string.Format(ci, "NO  longest jump: {0} at x−edge {1:0.0} m ({2:0.0} s)", s.Outcome, s.Feet.x - layout.EdgeX, s.Elapsed);
                 }
                 sb.AppendLine(string.Format(ci, "{0,-13} {1,5:0} {2,5:0} {3,5:0} {4,5:0} {5,5:0} {6,4:0.0} {7,5} | {8}",

@@ -251,7 +251,8 @@ namespace StickmanJumper.Presentation
         /// голова — круг, шарниры в суставах. Колени и локти гнутся только в свою сторону.
         /// Возвращает тело-туловище (за ним следит камера).
         /// </summary>
-        public Rigidbody2D BecomeRagdoll(Transform world, Vector2 velocity, int seed, float totalMass, float spin, Action<float> onImpact)
+        /// <param name="speedCap">Предел скорости частей тела, м/с (0 — без предела).</param>
+        public Rigidbody2D BecomeRagdoll(Transform world, Vector2 velocity, int seed, float totalMass, float spin, Action<float> onImpact, float speedCap = 0f)
         {
             if (_ragdoll) return null;
             _ragdoll = true;
@@ -309,6 +310,7 @@ namespace StickmanJumper.Presentation
                 col.sharedMaterial = material;
                 colliders.Add(col);
                 var rb = go.AddComponent<Rigidbody2D>();
+                go.AddComponent<RagdollSpeedLimit>().Max = speedCap;
                 rb.mass = unit * (name == "Body0" ? 3f : name == "head" ? 1.2f : 0.7f);
                 rb.linearDamping = 0.05f;
                 rb.angularDamping = 0.4f;
