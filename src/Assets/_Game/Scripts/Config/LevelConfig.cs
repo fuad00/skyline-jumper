@@ -1,0 +1,67 @@
+using System;
+using UnityEngine;
+
+namespace StickmanJumper.Config
+{
+    /// <summary>Внешний вид здания (набор спрайтов). Влияет только на картинку, не на физику.</summary>
+    public enum BuildingStyle { Office = 0, Brick = 1, Glass = 2, Dark = 3, Beige = 4 }
+
+    [Serializable]
+    public struct BuildingSpec
+    {
+        [Tooltip("Левый край здания, м (край стартовой крыши обычно = 0).")]
+        public float X;
+        [Tooltip("Ширина здания, м.")]
+        public float Width;
+        [Tooltip("Высота крыши над улицей, м (1 этаж ≈ 1 м).")]
+        public float Height;
+        public BuildingStyle Style;
+
+        public BuildingSpec(float x, float width, float height, BuildingStyle style)
+        {
+            X = x;
+            Width = width;
+            Height = height;
+            Style = style;
+        }
+    }
+
+    /// <summary>
+    /// Один уровень: откуда прыгаем, куда надо сесть, ветер, лимит времени, пороги звёзд.
+    /// Ось X вправо, Y вверх, улица на высоте 0. 1 единица = 1 метр.
+    /// </summary>
+    [CreateAssetMenu(menuName = "Stickman Jumper/Level Config", fileName = "Level")]
+    public class LevelConfig : ScriptableObject
+    {
+        [Tooltip("Имя уровня на экране итога.")]
+        public string Title = "Уровень 1";
+        [Tooltip("Ключ для сохранения рекорда. Не меняй после релиза.")]
+        public string Id = "easy1";
+
+        [Header("Здания")]
+        [Tooltip("Здание, с крыши которого прыгаем. Прыгаем вправо, с его правого края.")]
+        public BuildingSpec Start = new BuildingSpec(-7.2f, 7.2f, 60f, BuildingStyle.Office);
+        [Tooltip("Здание с красной стрелкой — сюда надо сесть.")]
+        public BuildingSpec Target = new BuildingSpec(30f, 6.8f, 16f, BuildingStyle.Brick);
+        [Tooltip("Остальные здания (о них тоже можно разбиться).")]
+        public BuildingSpec[] Others = { new BuildingSpec(11f, 7.4f, 9f, BuildingStyle.Glass) };
+
+        [Header("Цель")]
+        [Tooltip("Где стрелка на крыше цели: 0 = левый край крыши, 1 = правый.")]
+        [Range(0f, 1f)] public float ArrowPosition = 0.5f;
+
+        [Header("Помехи")]
+        [Tooltip("Ветер, м/с. Плюс — дует вправо, минус — влево.")]
+        public float Wind = 1.5f;
+        [Tooltip("Лимит времени с первого тапа, сек.")]
+        public float TimeLimit = 30f;
+
+        [Header("Звёзды")]
+        [Tooltip("2 звезды: сел не дальше этого от стрелки, м.")]
+        public float TwoStarDistance = 1.5f;
+        [Tooltip("3 звезды: сел не дальше этого от стрелки, м …")]
+        public float ThreeStarDistance = 0.6f;
+        [Tooltip("… и уложился в это время, сек.")]
+        public float ThreeStarTime = 14f;
+    }
+}

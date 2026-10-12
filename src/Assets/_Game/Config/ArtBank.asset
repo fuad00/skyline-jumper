@@ -1,0 +1,75 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3b7b85d8fac3a429b8ef4cd566ec8a73, type: 3}
+  m_Name: ArtBank
+  m_EditorClassIdentifier: StickmanJumper::StickmanJumper.Config.ArtBank
+  SpriteMaterial: {fileID: 2100000, guid: fe8dbdfc3f4664dd49c4e25c70ed604b, type: 2}
+  White: {fileID: 21300000, guid: 85885d6486f6b4a428848f4a879db61a, type: 3}
+  Circle: {fileID: 21300000, guid: 5df128b8a552147cf932fa4573463ae3, type: 3}
+  Limb: {fileID: 21300000, guid: 04e752e3ffa8d43bbaedd15d246a8f51, type: 3}
+  SkyGradient: {fileID: 21300000, guid: fc8c736a387354719ba323f131775eb1, type: 3}
+  Star: {fileID: 21300000, guid: 2b8c53c3b59a14a6da4298af99424fee, type: 3}
+  StarEmpty: {fileID: 21300000, guid: fa4fb241dd3464797859227b28b6d9a9, type: 3}
+  Buildings:
+  - Body: {fileID: 21300000, guid: 6de6a41580106474cb459077703cccb7, type: 3}
+    Ground: {fileID: 21300000, guid: 92f2a0a17c3fe4f28ae08c23fea93a6e, type: 3}
+    Roof: {fileID: 21300000, guid: e9c5b0eeffe954fb4b90e6773966480b, type: 3}
+    Fallback: {r: 0.62, g: 0.66, b: 0.7, a: 1}
+  - Body: {fileID: 21300000, guid: 733694f362e6a4268acbfc67b38d94d6, type: 3}
+    Ground: {fileID: 21300000, guid: 4ff4ac7b171a24e2a8cc76946b22d8e7, type: 3}
+    Roof: {fileID: 21300000, guid: bf285290a85714f948ed54a87101966d, type: 3}
+    Fallback: {r: 0.7, g: 0.38, b: 0.22, a: 1}
+  - Body: {fileID: 21300000, guid: 38d3543cd79d84f54ad14b9c582758e4, type: 3}
+    Ground: {fileID: 21300000, guid: 5b85a9544bd674558a69b5412e246de5, type: 3}
+    Roof: {fileID: 21300000, guid: 753eec0f22c9d412481424fc430debca, type: 3}
+    Fallback: {r: 0.4, g: 0.62, b: 0.8, a: 1}
+  - Body: {fileID: 21300000, guid: ea53b5061264d4f0f9348f42e22f0dab, type: 3}
+    Ground: {fileID: 21300000, guid: 4bc60256cdeca490daa232baeeffd829, type: 3}
+    Roof: {fileID: 21300000, guid: 99e73a11b6d0f4ac690da0bda70f078f, type: 3}
+    Fallback: {r: 0.18, g: 0.18, b: 0.2, a: 1}
+  - Body: {fileID: 21300000, guid: ced5b64156ace4423b8f8b0b3834cacc, type: 3}
+    Ground: {fileID: 21300000, guid: 30be6a51a370346f19fd568ffe9d696c, type: 3}
+    Roof: {fileID: 21300000, guid: d748c3ef43b934c99a78765b9d1bf757, type: 3}
+    Fallback: {r: 0.8, g: 0.72, b: 0.6, a: 1}
+  Head: {fileID: 21300000, guid: 0d6baee8003c549aeaf98de8e0838d90, type: 3}
+  CanopyOpening:
+  - {fileID: 21300000, guid: 68f0f84d483ff4e0d996a598e0e419b2, type: 3}
+  - {fileID: 21300000, guid: d805a5e1d9ffc48038101dee6c6b4a51, type: 3}
+  - {fileID: 21300000, guid: 1c73d9b11ba524704a8f99a09d95e48e, type: 3}
+  - {fileID: 21300000, guid: 33c9ae14b61fa40acae5f37722d2b89a, type: 3}
+  - {fileID: 21300000, guid: 85584d5a6f38d4811b478c6a2b080a88, type: 3}
+  - {fileID: 21300000, guid: 32f38ba7148b64a77bba1c0cd168f29a, type: 3}
+  - {fileID: 21300000, guid: 5cd727b36af664eeba2aaf19d355021b, type: 3}
+  - {fileID: 21300000, guid: 9a2ab39b0d241401ea84e6d92218cca1, type: 3}
+  CanopyOpen: {fileID: 21300000, guid: 6e158d50b3a8d4735b3e191ba81aad50, type: 3}
+  Arrow: {fileID: 21300000, guid: 65c5f86e402df4c2d97792a2ccd0bc06, type: 3}
+  Flag: {fileID: 21300000, guid: e4b61a9c5acbb4072a910f933bd179f2, type: 3}
+  Skyline: {fileID: 21300000, guid: 1b1ce5de2003e420f9bc072aafc039b4, type: 3}
+  Clouds:
+  - {fileID: 21300000, guid: 3eada68f8b2ce4d8bbcb08e19a348c3e, type: 3}
+  - {fileID: 21300000, guid: 19032bda9042344c59f7c386cd558db7, type: 3}
+  - {fileID: 21300000, guid: edc09fc2eac514c20891a8023f3679a2, type: 3}
+  Trees:
+  - {fileID: 21300000, guid: fe99d7260fb574a9c91bd1cd99d5fdc6, type: 3}
+  - {fileID: 21300000, guid: 2b89766e450b8400aafb501a45b1728c, type: 3}
+  - {fileID: 21300000, guid: 268211e1a8ae24476acf449b2339152a, type: 3}
+  - {fileID: 21300000, guid: 56a367a9dd20244929de57e224e0e165, type: 3}
+  Bushes:
+  - {fileID: 21300000, guid: 055d3b100603f40cfbba57ff31dcc84c, type: 3}
+  - {fileID: 21300000, guid: ea0b45dc67b554a3786ad0600f745813, type: 3}
+  - {fileID: 21300000, guid: 0511ae7d551c543b5afe8a0bf5c0b896, type: 3}
+  - {fileID: 21300000, guid: 894ce9af1ab624bb6b25e7c93971334c, type: 3}
+  Lamp: {fileID: 21300000, guid: 7bff97059c7af425295560c4c478415b, type: 3}
+  Hydrant: {fileID: 21300000, guid: 7811854c03b9641d49a853a693e5012b, type: 3}
+  IconTime: {fileID: 21300000, guid: 72cc9f1da7dad4c1787357def970d87e, type: 3}
+  IconWind: {fileID: 21300000, guid: 9745e25f817384a578184bae5e69ebe8, type: 3}
+  IconZoom: {fileID: 21300000, guid: 4319390b3e7004a5ea8d22f7388a2645, type: 3}

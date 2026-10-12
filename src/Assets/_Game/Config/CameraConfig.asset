@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 089947aed98c94bdb8f9cb4ddfb5ea17, type: 3}
+  m_Name: CameraConfig
+  m_EditorClassIdentifier: StickmanJumper::StickmanJumper.Config.CameraConfig
+  SizeOnRoof: 6
+  SizeInFlight: 9
+  SizePerSpeed: 0.14
+  SizeMax: 13
+  SizeSharpness: 2.5
+  FollowSharpness: 6
+  LookAhead: 0.35
+  LookAheadMax: 6
+  OverviewMargin: 4
+  ShakeOnCrash: 0.35

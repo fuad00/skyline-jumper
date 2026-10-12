@@ -1,0 +1,52 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20921aede122e43e0be2ea26de992760, type: 3}
+  m_Name: SoundBank
+  m_EditorClassIdentifier: StickmanJumper::StickmanJumper.Config.SoundBank
+  Footsteps: {fileID: 8300000, guid: 36078f150b9eb4644b11f85dc26e1d0a, type: 3}
+  Jump: {fileID: 8300000, guid: b2eb81ccf62af4135aed805b22f6b85a, type: 3}
+  AirLoop: {fileID: 8300000, guid: 6a95c08b574264b9c92e03dea7c52242, type: 3}
+  WindLoop: {fileID: 8300000, guid: a7eeef3f52dbc4fff833e8bec6bfd425, type: 3}
+  CanopyOpen: {fileID: 8300000, guid: 276f73900af75460799891350ba0f586, type: 3}
+  Landing:
+  - {fileID: 8300000, guid: 4831d577c96b24fcf99dc3948d6d79cd, type: 3}
+  - {fileID: 8300000, guid: 90b7113d9b7114a08a14a2edbff2ad59, type: 3}
+  Yells:
+  - {fileID: 8300000, guid: 13957a7dffc9f4095bef309895e82c1f, type: 3}
+  - {fileID: 8300000, guid: 4db174424beb84811842523732ec2ced, type: 3}
+  - {fileID: 8300000, guid: a816abd6af8914579b7675ff4573774a, type: 3}
+  - {fileID: 8300000, guid: 95a65174f58fc41ab83d4641fe3f332d, type: 3}
+  - {fileID: 8300000, guid: b0f1a8d4aeef6412bb66f4d6e8f6e8f8, type: 3}
+  - {fileID: 8300000, guid: ab2c4ba2cbb4c422095df72ee4dab6fa, type: 3}
+  - {fileID: 8300000, guid: 423f34ad8d001422f909f7d85e838120, type: 3}
+  - {fileID: 8300000, guid: 749c56d9cf9354503a93c7d61b3b4d3f, type: 3}
+  - {fileID: 8300000, guid: 00961c11bba794d77832e70fbf235da2, type: 3}
+  - {fileID: 8300000, guid: 3be8b231e71e74492848cca20c885ddd, type: 3}
+  - {fileID: 8300000, guid: 4d0db67a443b74a8a97357df583562ef, type: 3}
+  - {fileID: 8300000, guid: 8fa15c2fbe4e449e6b890230e12c3523, type: 3}
+  - {fileID: 8300000, guid: c224ddbd252f14e0088e4b549905781b, type: 3}
+  Bones:
+  - {fileID: 8300000, guid: d48645d1f11c245c9861eb171d712288, type: 3}
+  - {fileID: 8300000, guid: 59bcdb2885aea499697a91ba40264750, type: 3}
+  - {fileID: 8300000, guid: 5e6a8864cd2334f2d811cf3859d6dbb0, type: 3}
+  - {fileID: 8300000, guid: 00f883e6b66424a8e9869ff21bafe2d9, type: 3}
+  - {fileID: 8300000, guid: 38c3f411bb2c14e75a11352d132969eb, type: 3}
+  - {fileID: 8300000, guid: 78c6194846c134f64853892364f60bc0, type: 3}
+  Smash:
+  - {fileID: 8300000, guid: 4d2d8af4a53e14cf7821bda70f16dc0e, type: 3}
+  - {fileID: 8300000, guid: 58afa3c179e954050835e487932910db, type: 3}
+  - {fileID: 8300000, guid: 891903846514149f3ab8e73de196cac4, type: 3}
+  Success: {fileID: 8300000, guid: b8da8138680714ab7a97e2a7d6de6435, type: 3}
+  Click: {fileID: 8300000, guid: 3fc6d5501ae6b445cb36b841006eb1b0, type: 3}
+  Music: {fileID: 8300000, guid: 507599394c94f4742962e0526b58ecd4, type: 3}
+  MusicVolume: 0.25
+  EffectsVolume: 0.9

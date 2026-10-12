@@ -1,0 +1,208 @@
+/* Stickman Jumper runtime UI. Landscape reference canvas 1920 x 1080 (PanelSettings: scale with screen size, Expand).
+   Font: Rubik ExtraBold (OFL, has Cyrillic). Few numbers on screen: timer + wind only. */
+
+.root {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    -unity-font-definition: url("../Fonts/Rubik-ExtraBold.ttf");
+    color: rgb(255, 255, 255);
+}
+
+.grow {
+    flex-grow: 1;
+}
+
+/* ---------- HUD ---------- */
+
+.hud {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    padding: 36px 48px 0 48px;
+}
+
+.hud-row {
+    flex-direction: row;
+    align-items: center;
+}
+
+.pill {
+    flex-direction: row;
+    align-items: center;
+    margin-right: 20px;
+    padding: 8px 30px 8px 14px;
+    border-radius: 40px;
+    background-color: rgba(30, 38, 52, 0.78);
+    border-bottom-width: 6px;
+    border-color: rgba(10, 14, 22, 0.85);
+}
+
+.pill-text {
+    font-size: 46px;
+    -unity-text-align: middle-left;
+    padding: 0;
+    margin: 0;
+    text-shadow: 0 3px 0 rgba(0, 0, 0, 0.45);
+}
+
+.icon {
+    width: 56px;
+    height: 56px;
+    margin-right: 12px;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.icon--wind {
+    width: 64px;
+}
+
+.icon--zoom {
+    margin: 0;
+    width: 64px;
+    height: 64px;
+}
+
+.btn-round {
+    width: 104px;
+    height: 104px;
+    border-radius: 52px;
+    padding: 0;
+    margin: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(30, 38, 52, 0.78);
+    border-width: 0;
+    border-bottom-width: 6px;
+    border-color: rgba(10, 14, 22, 0.85);
+}
+
+.btn-round:hover {
+    background-color: rgba(48, 60, 80, 0.85);
+}
+
+.btn-round--on {
+    background-color: rgb(255, 196, 40);
+    border-color: rgb(196, 128, 10);
+}
+
+/* ---------- hint ---------- */
+
+.hint {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 64px;
+    font-size: 54px;
+    -unity-text-align: middle-center;
+    text-shadow: 0 4px 0 rgba(0, 0, 0, 0.55);
+    color: rgb(255, 244, 214);
+}
+
+/* ---------- summary ---------- */
+
+.summary-backdrop {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(8, 12, 20, 0.45);
+}
+
+.summary {
+    width: 860px;
+    padding: 36px 64px 48px 64px;
+    border-radius: 44px;
+    background-color: rgb(36, 46, 64);
+    border-width: 8px;
+    border-color: rgb(14, 18, 28);
+    align-items: stretch;
+}
+
+.summary-title {
+    font-size: 96px;
+    -unity-text-align: middle-center;
+    color: rgb(255, 210, 60);
+    text-shadow: 0 6px 0 rgba(0, 0, 0, 0.5);
+    margin: 0 0 6px 0;
+}
+
+.summary-title--fail {
+    color: rgb(255, 92, 72);
+}
+
+.stars {
+    flex-direction: row;
+    justify-content: center;
+    align-items: flex-end;
+    margin-bottom: 18px;
+}
+
+.star {
+    width: 120px;
+    height: 120px;
+    margin: 0 10px;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.star--mid {
+    width: 150px;
+    height: 150px;
+}
+
+.summary-line {
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 8px 6px;
+    border-bottom-width: 2px;
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.summary-key {
+    font-size: 44px;
+    color: rgb(170, 186, 210);
+    margin: 0;
+    padding: 0;
+}
+
+.summary-value {
+    font-size: 48px;
+    color: rgb(255, 255, 255);
+    margin: 0;
+    padding: 0;
+}
+
+.summary-record {
+    font-size: 44px;
+    -unity-text-align: middle-center;
+    color: rgb(120, 230, 120);
+    margin-top: 14px;
+}
+
+.btn {
+    margin-top: 28px;
+    height: 132px;
+    font-size: 64px;
+    border-radius: 34px;
+    border-width: 0;
+    border-bottom-width: 10px;
+    background-color: rgb(255, 196, 40);
+    border-color: rgb(196, 128, 10);
+    color: rgb(60, 34, 0);
+    -unity-text-align: middle-center;
+}
+
+.btn:hover {
+    background-color: rgb(255, 212, 80);
+}
+
+.btn:active {
+    border-bottom-width: 4px;
+    margin-top: 34px;
+}
