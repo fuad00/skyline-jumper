@@ -16,7 +16,9 @@ MonoBehaviour:
   White: {fileID: 21300000, guid: 85885d6486f6b4a428848f4a879db61a, type: 3}
   Circle: {fileID: 21300000, guid: 5df128b8a552147cf932fa4573463ae3, type: 3}
   Limb: {fileID: 21300000, guid: 04e752e3ffa8d43bbaedd15d246a8f51, type: 3}
-  SkyGradient: {fileID: 21300000, guid: fc8c736a387354719ba323f131775eb1, type: 3}
+  Paper: {fileID: 21300000, guid: cd2cc13ffb1a24441a0aa7a586f6c861, type: 3}
+  FogBand: {fileID: 21300000, guid: d92c72f57a2b64657a5d1482deb87405, type: 3}
+  Dash: {fileID: 21300000, guid: a1aaa10930d7f499ba9cc25facda0a50, type: 3}
   Star: {fileID: 21300000, guid: 2b8c53c3b59a14a6da4298af99424fee, type: 3}
   StarEmpty: {fileID: 21300000, guid: fa4fb241dd3464797859227b28b6d9a9, type: 3}
   Buildings:
@@ -41,6 +43,7 @@ MonoBehaviour:
     Roof: {fileID: 21300000, guid: d748c3ef43b934c99a78765b9d1bf757, type: 3}
     Fallback: {r: 0.8, g: 0.72, b: 0.6, a: 1}
   Head: {fileID: 21300000, guid: 0d6baee8003c549aeaf98de8e0838d90, type: 3}
+  HeadFront: {fileID: 21300000, guid: 7c0db093f64f04ea19f4393f5cbafc7e, type: 3}
   CanopyOpening:
   - {fileID: 21300000, guid: 68f0f84d483ff4e0d996a598e0e419b2, type: 3}
   - {fileID: 21300000, guid: d805a5e1d9ffc48038101dee6c6b4a51, type: 3}
@@ -51,8 +54,20 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 5cd727b36af664eeba2aaf19d355021b, type: 3}
   - {fileID: 21300000, guid: 9a2ab39b0d241401ea84e6d92218cca1, type: 3}
   CanopyOpen: {fileID: 21300000, guid: 6e158d50b3a8d4735b3e191ba81aad50, type: 3}
-  Arrow: {fileID: 21300000, guid: 65c5f86e402df4c2d97792a2ccd0bc06, type: 3}
   Flag: {fileID: 21300000, guid: e4b61a9c5acbb4072a910f933bd179f2, type: 3}
+  FlagLast: {fileID: 21300000, guid: dbcbe227426e94a5fb92d254ce8c808c, type: 3}
+  Digits:
+  - {fileID: 21300000, guid: 48818c48d70f1417eb0cc8e3afd64ae1, type: 3}
+  - {fileID: 21300000, guid: e3d5c14b8bddd4c98872f69d5a31ea0f, type: 3}
+  - {fileID: 21300000, guid: f6ad88566cf5c44978e98a348d92e977, type: 3}
+  - {fileID: 21300000, guid: 5a1c8e2d42d0748e9b874047c53e88e0, type: 3}
+  - {fileID: 21300000, guid: 0cf9c8b8b0e0143469d8a08833f79e51, type: 3}
+  - {fileID: 21300000, guid: f583ac5577dc14e0c925bede1106a8b7, type: 3}
+  - {fileID: 21300000, guid: 449af11570b054b1f940693d3d5e2ee3, type: 3}
+  - {fileID: 21300000, guid: 36169c37a0f7646d4922d7d8bcd341a7, type: 3}
+  - {fileID: 21300000, guid: 144f9a58e5b2f41daa34fbc32c76a069, type: 3}
+  - {fileID: 21300000, guid: 9a63ffb86abe844939966eeef544801f, type: 3}
+  MarkerArrow: {fileID: 21300000, guid: 1ed95a4cd6f9b4cb7b4956bff7579107, type: 3}
   Skyline: {fileID: 21300000, guid: 1b1ce5de2003e420f9bc072aafc039b4, type: 3}
   Clouds:
   - {fileID: 21300000, guid: 3eada68f8b2ce4d8bbcb08e19a348c3e, type: 3}
@@ -73,3 +88,5 @@ MonoBehaviour:
   IconTime: {fileID: 21300000, guid: 72cc9f1da7dad4c1787357def970d87e, type: 3}
   IconWind: {fileID: 21300000, guid: 9745e25f817384a578184bae5e69ebe8, type: 3}
   IconZoom: {fileID: 21300000, guid: 4319390b3e7004a5ea8d22f7388a2645, type: 3}
+  IconPause: {fileID: 21300000, guid: c3d34b4b6a637443e92dfe9c5644b096, type: 3}
+  IconLock: {fileID: 21300000, guid: 99faef81c87524bc0ab256b419850f95, type: 3}

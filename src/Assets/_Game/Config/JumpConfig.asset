@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f87deea3c86ba4db8a5485ce34e3e2ff, type: 3}
   m_Name: JumpConfig
   m_EditorClassIdentifier: StickmanJumper::StickmanJumper.Config.JumpConfig
-  WalkBackSpeed: 1.6
-  StartDistanceFromEdge: 0.6
-  BackWallMargin: 0.5
-  RunAcceleration: 6
-  RunMaxSpeed: 9.5
-  JumpUpSpeed: 4.5
+  WalkBackSpeed: 2.5
+  StartDistanceFromEdge: 0.8
+  BackWallMargin: 0.8
+  RunAcceleration: 5
+  RunMaxSpeed: 10
+  JumpUpSpeed: 5.2
   EdgeOverrun: 0.15

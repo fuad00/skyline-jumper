@@ -33,6 +33,7 @@ namespace StickmanJumper.Gameplay
         }
 
         public LevelLayout Level => _level;
+        public JumpConfig Jump => _jump;
         public FlightConfig Flight => _flight;
         public FlightParams Params => _params;
         public float StepSize => _step;
@@ -47,12 +48,20 @@ namespace StickmanJumper.Gameplay
         public Vector2 ContactNormal { get; private set; }
         /// <summary>Секунды с первого тапа (идут, пока прыжок не закончен).</summary>
         public float Elapsed { get; private set; }
-        /// <summary>Раскрытие купола 0..1.</summary>
-        public float Canopy { get; private set; }
+        /// <summary>Раскрытие купола 0..1 (сглаженное — им пользуются физика и картинка).</summary>
+        public float Canopy => FlightModel.OpenCurve(CanopyProgress);
+        /// <summary>Сырой прогресс раскрытия 0..1 (линейно по времени).</summary>
+        public float CanopyProgress { get; private set; }
         public bool CanopyDeployed { get; private set; }
         /// <summary>Длина разбега, м (насколько отошёл от края).</summary>
         public float RunUpLength { get; private set; }
-        /// <summary>Расстояние от точки посадки до стрелки, м (NaN, пока не сел).</summary>
+        /// <summary>Откуда стартовал разбег в этой попытке (NaN — ещё не бежал).</summary>
+        public float RunStartX { get; private set; } = float.NaN;
+        /// <summary>Откуда стартовал разбег в прошлой попытке на этом уровне (зелёный флажок). NaN — попыток не было.</summary>
+        public float LastRunStartX { get; private set; } = float.NaN;
+        /// <summary>Где был толчок (NaN — ещё не прыгал).</summary>
+        public float TakeoffX { get; private set; } = float.NaN;
+        /// <summary>Расстояние от точки посадки до флажка, м (NaN, пока не сел).</summary>
         public float LandingDistance { get; private set; }
         public bool LandedOnTarget { get; private set; }
         public float TimeLeft => Mathf.Max(0f, _level.TimeLimit - Elapsed);
@@ -62,8 +71,19 @@ namespace StickmanJumper.Gameplay
 
         public event Action<JumpEvent> Happened;
 
+        /// <summary>Забыть прошлые попытки (смена уровня).</summary>
+        public void ForgetHistory()
+        {
+            RunStartX = float.NaN;
+            LastRunStartX = float.NaN;
+        }
+
+        /// <summary>Новая попытка на том же уровне: запоминает, откуда бежали в этот раз.</summary>
         public void Reset()
         {
+            if (!float.IsNaN(RunStartX)) LastRunStartX = RunStartX;
+            RunStartX = float.NaN;
+            TakeoffX = float.NaN;
             Phase = JumpPhase.Ready;
             Outcome = JumpOutcome.None;
             Feet = new Vector2(_level.StartFeetX, _level.RoofY);
@@ -71,7 +91,7 @@ namespace StickmanJumper.Gameplay
             ImpactVelocity = Vector2.zero;
             ContactNormal = Vector2.up;
             Elapsed = 0f;
-            Canopy = 0f;
+            CanopyProgress = 0f;
             CanopyDeployed = false;
             RunUpLength = 0f;
             LandingDistance = float.NaN;
@@ -91,12 +111,14 @@ namespace StickmanJumper.Gameplay
                 case JumpPhase.BackingUp:
                 case JumpPhase.AtBackWall:
                     RunUpLength = _level.EdgeX - Feet.x;
+                    RunStartX = Feet.x;
                     Velocity = Vector2.zero;
                     Phase = JumpPhase.Running;
                     Raise(JumpEvent.StartedRunning);
                     break;
                 case JumpPhase.Running:
                     Velocity = new Vector2(Velocity.x, _jump.JumpUpSpeed);
+                    TakeoffX = Feet.x;
                     Phase = JumpPhase.Airborne;
                     Raise(JumpEvent.Jumped);
                     break;
@@ -192,7 +214,7 @@ namespace StickmanJumper.Gameplay
 
         void StepAir(float h)
         {
-            if (CanopyDeployed) Canopy = Mathf.Min(1f, Canopy + h / Mathf.Max(0.05f, _flight.CanopyOpenTime));
+            if (CanopyDeployed) CanopyProgress = Mathf.Min(1f, CanopyProgress + h / Mathf.Max(0.05f, _flight.CanopyOpenTime));
             Velocity = FlightModel.Step(Velocity, Canopy, _params, h);
             Vector2 delta = Velocity * h;
 
@@ -225,6 +247,11 @@ namespace StickmanJumper.Gameplay
                     float into = -Vector2.Dot(Velocity, hit.Normal);
                     Velocity += hit.Normal * into;
                     if (into > MinGrazeSpeed) Raise(JumpEvent.Grazed);
+                    // Keep the rest of the step along the wall (otherwise wind pinning him to a wall freezes him in mid-air).
+                    Vector2 rest = delta * (1f - hit.T);
+                    rest -= hit.Normal * Vector2.Dot(rest, hit.Normal);
+                    if (rest.sqrMagnitude > 1e-10f)
+                        Feet += Sweep.Cast(BodyBox, rest, _level.Solids, out var next) ? rest * next.T : rest;
                     break;
             }
         }

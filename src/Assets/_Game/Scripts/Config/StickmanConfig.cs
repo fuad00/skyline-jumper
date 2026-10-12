@@ -6,23 +6,31 @@ namespace StickmanJumper.Config
     [CreateAssetMenu(menuName = "Stickman Jumper/Stickman Config", fileName = "StickmanConfig")]
     public class StickmanConfig : ScriptableObject
     {
-        [Header("Размеры, м")]
-        public float HeadSize = 0.56f;
-        public float TorsoLength = 0.55f;
-        public float UpperArmLength = 0.3f;
-        public float LowerArmLength = 0.3f;
-        public float UpperLegLength = 0.4f;
-        public float LowerLegLength = 0.4f;
-        [Tooltip("Толщина рук, ног и тела.")]
-        public float LimbThickness = 0.13f;
+        [Header("Размеры, м (пропорции оригинала: голова ≈ 40% роста)")]
+        public float HeadSize = 0.8f;
+        public float TorsoLength = 0.5f;
+        public float UpperArmLength = 0.42f;
+        public float LowerArmLength = 0.38f;
+        public float UpperLegLength = 0.34f;
+        public float LowerLegLength = 0.34f;
+        [Tooltip("Высота щиколотки над крышей (ступня под ней).")]
+        public float AnkleHeight = 0.04f;
+        [Tooltip("Длина ступни.")]
+        public float FootLength = 0.13f;
+        [Tooltip("Толщина рук и ног (тело чуть толще).")]
+        public float LimbThickness = 0.085f;
         [Tooltip("Цвет передних рук и ног.")]
-        public Color FrontColor = new Color(0.06f, 0.06f, 0.07f);
+        public Color FrontColor = new Color(0.05f, 0.05f, 0.06f);
         [Tooltip("Цвет задних рук и ног (чуть светлее — даёт глубину).")]
-        public Color BackColor = new Color(0.24f, 0.24f, 0.26f);
+        public Color BackColor = new Color(0.17f, 0.17f, 0.19f);
 
         [Header("Анимация")]
-        [Tooltip("Длина шага при беге, м (частота шагов = скорость / длина).")]
-        public float StrideLength = 1.5f;
+        [Tooltip("Двойной шаг при ходьбе, м. Частота шагов = скорость / шаг, поэтому ступни не скользят.")]
+        public float WalkStride = 0.95f;
+        [Tooltip("Двойной шаг при беге: база + добавка за каждый м/с, но не больше максимума, м.")]
+        public float RunStrideBase = 1.05f;
+        public float RunStridePerSpeed = 0.09f;
+        public float RunStrideMax = 1.95f;
         [Tooltip("Как быстро поза перетекает в новую (больше — резче).")]
         public float PoseSharpness = 12f;
 

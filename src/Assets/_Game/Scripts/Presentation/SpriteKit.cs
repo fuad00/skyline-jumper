@@ -6,13 +6,14 @@ namespace StickmanJumper.Presentation
     public static class SortOrder
     {
         public const int Sky = -100;
-        public const int Clouds = -90;
-        public const int Skyline = -80;
-        public const int CityFar = -70;
+        public const int Skyline = -90;
+        public const int Clouds = -80;
         public const int Buildings = 0;
+        public const int Ruler = 25; // meter markers stand above the roof, in front of the decor
         public const int Street = 10;
         public const int Decor = 20;
         public const int Target = 30;
+        public const int Fog = 40;
         public const int Canopy = 45;
         public const int StickmanBack = 50;
         public const int StickmanBody = 52;

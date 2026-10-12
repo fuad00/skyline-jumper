@@ -74,12 +74,20 @@ namespace StickmanJumper.Tests
         }
 
         [Test]
-        public void FullCanopy_DescendsSlowly_AndDriftsWithWindPlusGlide()
+        public void FullCanopy_DescendsSlowly_AndDriftsWithWind()
         {
             var cfg = TestKit.Flight();
             var v = Settle(new FlightParams(cfg, 2f), 1f, new Vector2(8f, -30f));
-            Assert.That(-v.y, Is.InRange(cfg.CanopyTerminalSpeed * 0.85f, cfg.CanopyTerminalSpeed * 1.01f));
-            Assert.AreEqual(2f + cfg.CanopyGlideSpeed, v.x, 0.3f);
+            Assert.That(-v.y, Is.InRange(cfg.CanopyTerminalSpeed * 0.9f, cfg.CanopyTerminalSpeed * 1.01f));
+            Assert.AreEqual(2f, v.x, 0.05f);
+        }
+
+        [Test]
+        public void Canopy_KillsForwardSpeedFast()
+        {
+            var cfg = TestKit.Flight();
+            var v = Settle(new FlightParams(cfg, 0f), 1f, new Vector2(10f, -25f), 0.5f);
+            Assert.Less(Mathf.Abs(v.x), 0.6f, "after half a second under the canopy almost no forward speed is left");
         }
 
         [Test]

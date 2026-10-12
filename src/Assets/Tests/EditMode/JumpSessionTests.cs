@@ -104,6 +104,16 @@ namespace StickmanJumper.Tests
         }
 
         [Test]
+        public void WindPinnedAgainstWall_SlidesDown_DoesNotHang()
+        {
+            // Regression: short run-up + instant canopy drifts into the target's wall just below its roof.
+            var s = TestKit.Session();
+            TestKit.RunToEnd(s, new Autopilot { DesiredRunUp = 2f, OpenRightAway = true });
+            Assert.AreNotEqual(JumpOutcome.TimesUp, s.Outcome, $"stuck at {s.Feet}");
+            Assert.IsTrue(s.Phase.IsFinished());
+        }
+
+        [Test]
         public void WaitingTooLong_IsTimesUp()
         {
             var level = TestKit.Level();
@@ -113,6 +123,25 @@ namespace StickmanJumper.Tests
             TestKit.StepFor(s, 4f);
             Assert.AreEqual(JumpPhase.TimeUp, s.Phase);
             Assert.AreEqual(JumpOutcome.TimesUp, s.Outcome);
+        }
+
+        [Test]
+        public void NextAttempt_RemembersWhereLastRunStarted()
+        {
+            var s = TestKit.Session();
+            Assert.IsNaN(s.LastRunStartX, "no flag before the first attempt");
+            s.Tap();
+            TestKit.StepFor(s, 1.2f);
+            s.Tap();
+            float start = s.RunStartX;
+            Assert.Less(start, s.Level.StartFeetX);
+            TestKit.StepFor(s, 0.5f);
+            s.Reset();
+            Assert.AreEqual(start, s.LastRunStartX, 1e-5f);
+            s.Reset(); // gave up before running: keep the old flag
+            Assert.AreEqual(start, s.LastRunStartX, 1e-5f);
+            s.ForgetHistory();
+            Assert.IsNaN(s.LastRunStartX);
         }
 
         [Test]

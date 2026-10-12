@@ -20,6 +20,7 @@ namespace StickmanJumper.EditorTools
     public static class SmokeTest
     {
         const string ActiveKey = "SJ.Smoke.Active", OutKey = "SJ.Smoke.Out", StartKey = "SJ.Smoke.Start", BackupKey = "SJ.Smoke.Backup";
+        const string BackgroundKey = "SJ.Smoke.RunInBackground";
         const double TimeoutSeconds = 240;
         const int SnapW = 1280, SnapH = 720;
 
@@ -57,7 +58,12 @@ namespace StickmanJumper.EditorTools
             SessionState.SetString(OutKey, outDir);
             SessionState.SetFloat(StartKey, (float)EditorApplication.timeSinceStartup);
             SessionState.SetBool(ActiveKey, true);
-            SessionState.SetString(BackupKey, BestKey() is string k && PlayerPrefs.HasKey(k) ? PlayerPrefs.GetFloat(k).ToString(CultureInfo.InvariantCulture) : "");
+            SessionState.SetString(BackupKey, PlayerPrefs.GetString(Save.PlayerPrefsSaveStore.Key, ""));
+            PlayerPrefs.DeleteKey(Save.PlayerPrefsSaveStore.Key); // play from a clean save; restored in Finish()
+            // An unfocused live Editor freezes the player loop unless the game may run in background.
+            SessionState.SetBool(BackgroundKey, Application.runInBackground);
+            Application.runInBackground = true;
+            _levelShot = 0;
 
             var violations = PlaceholderGuard.FindViolations();
             Log(violations.Count == 0
@@ -70,7 +76,6 @@ namespace StickmanJumper.EditorTools
             EditorApplication.EnterPlaymode();
         }
 
-        static string BestKey() => "SJ.Best.easy1";
 
         static void Tick()
         {
@@ -87,7 +92,6 @@ namespace StickmanJumper.EditorTools
             {
                 _hooked = true;
                 Application.logMessageReceived += OnLog;
-                PlayerPrefs.DeleteKey(BestKey());
             }
             var g = Object.FindAnyObjectByType<GameRoot>();
             if (g == null || !g.Ready) return;
@@ -100,63 +104,102 @@ namespace StickmanJumper.EditorTools
 
             switch (_phase)
             {
-                case 0: // overview before the first tap
-                    if (Wait(1.2)) { Snap("01_ready_overview"); Next(); }
+                case 0: // main menu, stage and level select (the game starts in the menu, like the original)
+                    if (Wait(1.2)) { Snap("00_main_menu"); Next(); }
                     break;
                 case 1:
-                    g.Autopilot = new Autopilot();
+                    g.ShowStageSelect();
                     Next();
                     break;
-                case 2: // run A: autopilot, should land on the arrow
-                    ShotWhen(s.Phase == JumpPhase.BackingUp && s.Level.EdgeX - s.Feet.x > 2.5f, "02_backing_up");
-                    ShotWhen(s.Phase == JumpPhase.Running && s.Velocity.x > 6.5f, "03_running");
-                    ShotWhen(s.Phase == JumpPhase.Airborne && !s.CanopyDeployed && s.Velocity.y < -12f, "04_freefall");
-                    ShotWhen(s.Phase == JumpPhase.Airborne && s.Canopy >= 1f && s.Feet.y < s.Level.RoofY - 20f, "05_canopy");
-                    ShotWhen(s.Phase == JumpPhase.Landed, "06_landed");
-                    if (g.UI.SummaryVisible) { Report("run A autopilot     ", g, JumpOutcome.WellDone); Next(); }
+                case 2:
+                    if (Wait(0.6)) { Snap("01_stage_select"); Next(); }
                     break;
                 case 3:
-                    if (Wait(0.8)) { Snap("07_summary_welldone"); Next(); }
+                    g.ShowLevelSelect(0);
+                    Next();
                     break;
                 case 4:
-                    g.Autopilot = new Autopilot { NeverOpenCanopy = true };
-                    g.Retry();
+                    if (Wait(0.6)) { Snap("02_level_select"); Next(); }
+                    break;
+                case 5:
+                    g.StartLevel(0, 0);
                     Next();
                     break;
-                case 5: // run B: no canopy → crash
-                    ShotWhen(s.Phase == JumpPhase.Airborne && s.Feet.y < s.Level.TargetRect.yMax + 12f && s.Feet.y > 4f, "08_falling_no_canopy");
-                    ShotWhenDelayed(g.Stickman.IsRagdoll, "09_crash", 0.35);
-                    if (g.UI.SummaryVisible) { Report("run B no canopy     ", g, JumpOutcome.Died); Next(); }
+                case 6: // overview before the first tap
+                    if (Wait(1.2)) { Snap("03_ready_overview"); g.Autopilot = new Autopilot(); Next(); }
                     break;
-                case 6:
-                    if (Wait(0.6)) { Snap("10_summary_died"); Next(); }
+                case 7: // run A: autopilot plans run-up + canopy height and should land on the flag
+                    ShotWhen(s.Phase == JumpPhase.BackingUp && s.Level.EdgeX - s.Feet.x > 2.2f, "04_walk_back_facing_away");
+                    ShotWhen(s.Phase == JumpPhase.Running && s.Velocity.x > 5f, "05_running");
+                    ShotWhen(s.Phase == JumpPhase.Airborne && s.Velocity.y > 0f && s.Feet.x > s.Level.EdgeX + 0.6f, "06_takeoff");
+                    ShotWhen(s.Phase == JumpPhase.Airborne && !s.CanopyDeployed && s.Velocity.y < -14f, "07_freefall_guide");
+                    ShotWhen(s.Phase == JumpPhase.Airborne && s.Canopy >= 1f && s.Feet.y < s.Level.TargetRect.yMax + 8f, "08_canopy");
+                    ShotWhenDelayed(s.Phase == JumpPhase.Landed, "09_landed", 0.9);
+                    if (g.UI.SummaryVisible) { Report("run A autopilot     ", g, JumpOutcome.WellDone); Next(); }
                     break;
-                case 7:
-                    g.Autopilot = new Autopilot { NeverJump = true };
-                    g.Retry();
-                    Next();
-                    break;
-                case 8: // run C: never taps jump → stumbles off the edge
-                    ShotWhenDelayed(g.Stickman.IsRagdoll, "11_stumble", 0.5);
-                    if (g.UI.SummaryVisible) { Report("run C missed edge   ", g, JumpOutcome.Died); Next(); }
+                case 8:
+                    if (Wait(0.8)) { Snap("10_summary_welldone"); Next(); }
                     break;
                 case 9:
-                    g.Autopilot = new Autopilot { DesiredRunUp = 2f, OpenRightAway = true };
+                    g.Autopilot = new Autopilot { NeverOpenCanopy = true, DesiredRunUp = 4f };
                     g.Retry();
                     Next();
                     break;
-                case 10: // run D: short run-up, canopy right after take-off → wind drags it away
-                    ShotWhen(s.Phase == JumpPhase.Airborne && s.Canopy >= 1f && s.Feet.y < s.Level.RoofY - 8f, "12_early_canopy");
-                    if (g.UI.SummaryVisible) { Report("run D early canopy  ", g, null); Next(); }
+                case 10: // run B: «Last» flag of the previous run is on the roof; no canopy → crash
+                    ShotWhen(s.Phase == JumpPhase.BackingUp && s.Level.EdgeX - s.Feet.x > 3f, "11_roof_markers_last_flag");
+                    ShotWhenDelayed(g.Stickman.IsRagdoll, "12_crash", 0.3);
+                    if (g.UI.SummaryVisible) { Report("run B no canopy     ", g, JumpOutcome.Died); Next(); }
                     break;
                 case 11:
-                    if (Wait(0.6)) { Snap("13_summary_early"); Next(); }
+                    if (Wait(0.6)) { Snap("13_summary_died"); Next(); }
                     break;
                 case 12:
+                    g.Autopilot = new Autopilot { NeverJump = true, DesiredRunUp = 6f };
+                    g.Retry();
+                    Next();
+                    break;
+                case 13: // run C: never taps jump → stumbles off the edge
+                    ShotWhenDelayed(g.Stickman.IsRagdoll, "14_stumble", 0.45);
+                    if (g.UI.SummaryVisible) { Report("run C missed edge   ", g, JumpOutcome.Died); Next(); }
+                    break;
+                case 14:
+                    g.Autopilot = null;
+                    g.Retry();
+                    Next();
+                    break;
+                case 15: // pause bar
+                    if (Wait(0.5)) { g.SetPaused(true); Next(); }
+                    break;
+                case 16:
+                    if (Wait(0.3)) { Snap("15_pause"); g.SetPaused(false); Next(); }
+                    break;
+                case 17: // level select after progress: level 1 has stars, level 2 is unlocked
+                    g.ShowLevelSelect(0);
+                    Next();
+                    break;
+                case 18:
+                    if (Wait(0.6)) { Snap("16_level_select_progress"); _levelShot = 0; Next(); }
+                    break;
+                case 19: // every level of stage 1 from above, to review the layouts
+                    g.StartLevel(0, _levelShot);
+                    Next();
+                    break;
+                case 20:
+                    if (Wait(1.0))
+                    {
+                        Snap($"lvl_{_levelShot + 1:00}");
+                        _levelShot++;
+                        if (_levelShot < g.Catalog.Stages[0].Levels.Length) _phase = 19;
+                        else Next();
+                    }
+                    break;
+                case 21:
                     Finish();
                     break;
             }
         }
+
+        static int _levelShot;
 
         static readonly Dictionary<string, double> Armed = new Dictionary<string, double>();
 
@@ -181,7 +224,7 @@ namespace StickmanJumper.EditorTools
         {
             var s = g.Session;
             Log(string.Format(CultureInfo.InvariantCulture,
-                "{0}: outcome {1,-14} | run-up {2,4:0.0} m | time {3,5:0.00} s | to arrow {4,6:0.00} m | points {5,4} | stars {6}",
+                "{0}: outcome {1,-14} | run-up {2,4:0.0} m | time {3,5:0.00} s | to flag {4,6:0.00} m | points {5,4} | stars {6}",
                 label, s.Outcome, s.RunUpLength, s.Elapsed, s.LandingDistance, g.LastScore.Points, g.LastScore.Stars));
             if (expected.HasValue && s.Outcome != expected.Value)
             {
@@ -274,10 +317,11 @@ namespace StickmanJumper.EditorTools
             EditorApplication.update -= Tick;
             Application.logMessageReceived -= OnLog;
             SessionState.SetBool(ActiveKey, false);
+            Application.runInBackground = SessionState.GetBool(BackgroundKey, Application.runInBackground);
             Armed.Clear();
             string backup = SessionState.GetString(BackupKey, "");
-            if (float.TryParse(backup, NumberStyles.Float, CultureInfo.InvariantCulture, out float best)) PlayerPrefs.SetFloat(BestKey(), best);
-            else PlayerPrefs.DeleteKey(BestKey());
+            if (string.IsNullOrEmpty(backup)) PlayerPrefs.DeleteKey(Save.PlayerPrefsSaveStore.Key);
+            else PlayerPrefs.SetString(Save.PlayerPrefsSaveStore.Key, backup);
             PlayerPrefs.Save();
             var g = Object.FindAnyObjectByType<GameRoot>();
             if (g != null) g.Autopilot = null;

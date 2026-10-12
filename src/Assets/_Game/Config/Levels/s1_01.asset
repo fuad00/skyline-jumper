@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f2fa2758da654f7fbd34991128a30aa, type: 3}
+  m_Name: s1_01
+  m_EditorClassIdentifier: StickmanJumper::StickmanJumper.Config.LevelConfig
+  Title: "\u041F\u0440\u044B\u0436\u043E\u043A 1"
+  Id: s1_01
+  Start:
+    X: -16.27
+    Width: 16.27
+    Height: 60
+    Style: 0
+  Target:
+    X: 17
+    Width: 18.18
+    Height: 18
+    Style: 1
+  Others: []
+  ArrowPosition: 0.5
+  Wind: 1.5
+  WindMax: 6
+  TimeLimit: 30
+  TwoStarDistance: 2
+  ThreeStarDistance: 0.75
+  ThreeStarTime: 15

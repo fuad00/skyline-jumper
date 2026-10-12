@@ -40,28 +40,30 @@ namespace StickmanJumper.Config
 
         [Header("Здания")]
         [Tooltip("Здание, с крыши которого прыгаем. Прыгаем вправо, с его правого края.")]
-        public BuildingSpec Start = new BuildingSpec(-7.2f, 7.2f, 60f, BuildingStyle.Office);
-        [Tooltip("Здание с красной стрелкой — сюда надо сесть.")]
-        public BuildingSpec Target = new BuildingSpec(30f, 6.8f, 16f, BuildingStyle.Brick);
+        public BuildingSpec Start = new BuildingSpec(-16.3f, 16.3f, 60f, BuildingStyle.Office);
+        [Tooltip("Здание с красным флажком — сюда надо сесть.")]
+        public BuildingSpec Target = new BuildingSpec(17f, 18.2f, 18f, BuildingStyle.Brick);
         [Tooltip("Остальные здания (о них тоже можно разбиться).")]
-        public BuildingSpec[] Others = { new BuildingSpec(11f, 7.4f, 9f, BuildingStyle.Glass) };
+        public BuildingSpec[] Others = new BuildingSpec[0];
 
         [Header("Цель")]
-        [Tooltip("Где стрелка на крыше цели: 0 = левый край крыши, 1 = правый.")]
+        [Tooltip("Где красный флажок на крыше цели: 0 = левый край крыши, 1 = правый.")]
         [Range(0f, 1f)] public float ArrowPosition = 0.5f;
 
         [Header("Помехи")]
         [Tooltip("Ветер, м/с. Плюс — дует вправо, минус — влево.")]
         public float Wind = 1.5f;
+        [Tooltip("Самый сильный ветер в игре (полная полоска на панели ветра), м/с.")]
+        public float WindMax = 6f;
         [Tooltip("Лимит времени с первого тапа, сек.")]
         public float TimeLimit = 30f;
 
         [Header("Звёзды")]
-        [Tooltip("2 звезды: сел не дальше этого от стрелки, м.")]
-        public float TwoStarDistance = 1.5f;
-        [Tooltip("3 звезды: сел не дальше этого от стрелки, м …")]
-        public float ThreeStarDistance = 0.6f;
+        [Tooltip("2 звезды: сел не дальше этого от флажка, м.")]
+        public float TwoStarDistance = 2f;
+        [Tooltip("3 звезды: сел не дальше этого от флажка, м …")]
+        public float ThreeStarDistance = 0.75f;
         [Tooltip("… и уложился в это время, сек.")]
-        public float ThreeStarTime = 14f;
+        public float ThreeStarTime = 15f;
     }
 }

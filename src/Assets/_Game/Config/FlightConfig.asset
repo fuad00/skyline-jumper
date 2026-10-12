@@ -14,9 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: StickmanJumper::StickmanJumper.Config.FlightConfig
   Gravity: 9.81
   FreefallTerminalSpeed: 45
-  CanopyOpenTime: 0.8
+  CanopyOpenTime: 0.6
   CanopyTerminalSpeed: 4.5
-  CanopyGlideSpeed: 1.2
+  CanopyBrakeX: 6
   SafeLandingSpeed: 7
   WallCrashSpeed: 3
   BodyWidth: 0.5

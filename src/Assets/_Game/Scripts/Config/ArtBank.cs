@@ -30,7 +30,12 @@ namespace StickmanJumper.Config
         public Sprite Circle;
         [Tooltip("Капсула для рук, ног и тела (9-slice).")]
         public Sprite Limb;
-        public Sprite SkyGradient;
+        [Tooltip("Тетрадный лист в клетку (фон, повторяется плиткой).")]
+        public Sprite Paper;
+        [Tooltip("Белая дымка у земли (сверху прозрачная).")]
+        public Sprite FogBand;
+        [Tooltip("Одна чёрточка пунктира от флажка цели вверх (повторяется плиткой).")]
+        public Sprite Dash;
         public Sprite Star;
         public Sprite StarEmpty;
 
@@ -38,15 +43,24 @@ namespace StickmanJumper.Config
         public BuildingArt[] Buildings = new BuildingArt[5];
 
         [Header("Стикмен и парашют")]
+        [Tooltip("Голова сбоку (один глаз).")]
         public Sprite Head;
-        [Tooltip("Кадры раскрытия купола по порядку.")]
+        [Tooltip("Голова анфас (два глаза) — под куполом стикмен развёрнут к камере.")]
+        public Sprite HeadFront;
+        [Tooltip("Секции купола слева направо (встают дугой).")]
         public Sprite[] CanopyOpening = new Sprite[0];
-        [Tooltip("Полностью раскрытый купол со стропами.")]
+        [Tooltip("Держатель строп над головой (стропы сходятся в его верх).")]
         public Sprite CanopyOpen;
 
-        [Header("Цель")]
-        public Sprite Arrow;
+        [Header("Флажки и линейка")]
+        [Tooltip("Красный флажок цели (опора спрайта — низ древка).")]
         public Sprite Flag;
+        [Tooltip("Зелёный флажок: откуда стартовал прошлый разбег.")]
+        public Sprite FlagLast;
+        [Tooltip("Цифры 0–9 для меток метров над крышей.")]
+        public Sprite[] Digits = new Sprite[0];
+        [Tooltip("Стрелка вниз под цифрой метки.")]
+        public Sprite MarkerArrow;
 
         [Header("Улица и фон")]
         public Sprite Skyline;
@@ -60,6 +74,9 @@ namespace StickmanJumper.Config
         public Sprite IconTime;
         public Sprite IconWind;
         public Sprite IconZoom;
+        public Sprite IconPause;
+        [Tooltip("Замок на закрытых этапах и уровнях.")]
+        public Sprite IconLock;
 
         public BuildingArt Building(BuildingStyle style)
         {

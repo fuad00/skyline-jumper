@@ -12,16 +12,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 85c5b726204774d95b7b35cba319c72e, type: 3}
   m_Name: StickmanConfig
   m_EditorClassIdentifier: StickmanJumper::StickmanJumper.Config.StickmanConfig
-  HeadSize: 0.56
-  TorsoLength: 0.55
-  UpperArmLength: 0.3
-  LowerArmLength: 0.3
-  UpperLegLength: 0.4
-  LowerLegLength: 0.4
-  LimbThickness: 0.13
-  FrontColor: {r: 0.06, g: 0.06, b: 0.07, a: 1}
-  BackColor: {r: 0.24, g: 0.24, b: 0.26, a: 1}
-  StrideLength: 1.5
+  HeadSize: 0.8
+  TorsoLength: 0.5
+  UpperArmLength: 0.42
+  LowerArmLength: 0.38
+  UpperLegLength: 0.34
+  LowerLegLength: 0.34
+  AnkleHeight: 0.04
+  FootLength: 0.13
+  LimbThickness: 0.085
+  FrontColor: {r: 0.05, g: 0.05, b: 0.06, a: 1}
+  BackColor: {r: 0.17, g: 0.17, b: 0.19, a: 1}
+  WalkStride: 0.95
+  RunStrideBase: 1.05
+  RunStridePerSpeed: 0.09
+  RunStrideMax: 1.95
   PoseSharpness: 12
   Mass: 70
   CrashSpin: 6

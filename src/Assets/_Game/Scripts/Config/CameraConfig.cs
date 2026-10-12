@@ -6,15 +6,15 @@ namespace StickmanJumper.Config
     [CreateAssetMenu(menuName = "Stickman Jumper/Camera Config", fileName = "CameraConfig")]
     public class CameraConfig : ScriptableObject
     {
-        [Header("Приближение (половина высоты кадра, м)")]
+        [Header("Приближение (половина высоты кадра, м). Оригинал держит камеру далеко: стикмен ≈ 5% высоты экрана")]
         [Tooltip("На крыше перед прыжком.")]
-        public float SizeOnRoof = 6f;
+        public float SizeOnRoof = 16f;
         [Tooltip("В полёте на малой скорости.")]
-        public float SizeInFlight = 9f;
+        public float SizeInFlight = 17.5f;
         [Tooltip("Добавка за каждый м/с скорости.")]
-        public float SizePerSpeed = 0.14f;
+        public float SizePerSpeed = 0.08f;
         [Tooltip("Самое далёкое в полёте.")]
-        public float SizeMax = 13f;
+        public float SizeMax = 21f;
         [Tooltip("Насколько быстро меняется приближение (больше — резче).")]
         public float SizeSharpness = 2.5f;
 

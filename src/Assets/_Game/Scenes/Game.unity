@@ -119,7 +119,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &1134684273
+--- !u!1 &1103196068
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -127,86 +127,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1134684276}
-  - component: {fileID: 1134684275}
-  - component: {fileID: 1134684274}
-  m_Layer: 0
-  m_Name: GameRoot
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1134684274
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1134684273}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 55e6b899a0aab4cd59fc198851ce3731, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: StickmanJumper::StickmanJumper.GameRoot
-  _level: {fileID: 11400000, guid: 97aac8ec5699e4dc5bf03a02580b62d3, type: 2}
-  _jumpConfig: {fileID: 11400000, guid: 86065a7c43c794eaeb3fbb13eaeca692, type: 2}
-  _flightConfig: {fileID: 11400000, guid: f96869425cad249288467a6f135939df, type: 2}
-  _scoreConfig: {fileID: 11400000, guid: 89e18d824ca204643a62d767535cb53d, type: 2}
-  _cameraConfig: {fileID: 11400000, guid: b94da93261abf4d61b6591f149b87a48, type: 2}
-  _stickmanConfig: {fileID: 11400000, guid: c8cbbb8bbb8ab44b09a039e869ddf090, type: 2}
-  _art: {fileID: 11400000, guid: bfbd5e2244d544e3f8480b50b127e3d8, type: 2}
-  _sounds: {fileID: 11400000, guid: 68f31f3b5677b44eaa1ce065f09ad5a1, type: 2}
-  _camera: {fileID: 1950811713}
---- !u!114 &1134684275
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1134684273}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 19102, guid: 0000000000000000e000000000000000, type: 0}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.dll::UnityEngine.UIElements.UIDocument
-  m_PanelSettings: {fileID: 11400000, guid: 7f03d0d4c98c940c2b63aae0558fe8df, type: 2}
-  m_ParentUI: {fileID: 0}
-  sourceAsset: {fileID: 9197481963319205126, guid: cad720b80d64b4866934f8f4f7bd32bc, type: 3}
-  m_SortingOrder: 0
-  m_Position: 0
-  m_WorldSpaceSizeMode: 1
-  m_WorldSpaceWidth: 1920
-  m_WorldSpaceHeight: 1080
-  m_PivotReferenceSize: 0
-  m_Pivot: 0
-  m_WorldSpaceCollider: {fileID: 0}
---- !u!4 &1134684276
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1134684273}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1950811712
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1950811715}
-  - component: {fileID: 1950811713}
-  - component: {fileID: 1950811714}
+  - component: {fileID: 1103196071}
+  - component: {fileID: 1103196069}
+  - component: {fileID: 1103196070}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -214,17 +137,17 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!20 &1950811713
+--- !u!20 &1103196069
 Camera:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1950811712}
+  m_GameObject: {fileID: 1103196068}
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
-  m_BackGroundColor: {r: 0.55, g: 0.75, b: 0.95, a: 1}
+  m_BackGroundColor: {r: 0.9, g: 0.89, b: 0.85, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -265,24 +188,101 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!81 &1950811714
+--- !u!81 &1103196070
 AudioListener:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1950811712}
+  m_GameObject: {fileID: 1103196068}
   m_Enabled: 1
---- !u!4 &1950811715
+--- !u!4 &1103196071
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1950811712}
+  m_GameObject: {fileID: 1103196068}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 30, z: -10}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1177257686
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1177257689}
+  - component: {fileID: 1177257688}
+  - component: {fileID: 1177257687}
+  m_Layer: 0
+  m_Name: GameRoot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1177257687
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1177257686}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 55e6b899a0aab4cd59fc198851ce3731, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: StickmanJumper::StickmanJumper.GameRoot
+  _catalog: {fileID: 11400000, guid: 126d2225ac5bc43558ac669177f4c8db, type: 2}
+  _jumpConfig: {fileID: 11400000, guid: 86065a7c43c794eaeb3fbb13eaeca692, type: 2}
+  _flightConfig: {fileID: 11400000, guid: f96869425cad249288467a6f135939df, type: 2}
+  _scoreConfig: {fileID: 11400000, guid: 89e18d824ca204643a62d767535cb53d, type: 2}
+  _cameraConfig: {fileID: 11400000, guid: b94da93261abf4d61b6591f149b87a48, type: 2}
+  _stickmanConfig: {fileID: 11400000, guid: c8cbbb8bbb8ab44b09a039e869ddf090, type: 2}
+  _art: {fileID: 11400000, guid: bfbd5e2244d544e3f8480b50b127e3d8, type: 2}
+  _sounds: {fileID: 11400000, guid: 68f31f3b5677b44eaa1ce065f09ad5a1, type: 2}
+  _camera: {fileID: 1103196069}
+--- !u!114 &1177257688
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1177257686}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 19102, guid: 0000000000000000e000000000000000, type: 0}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.dll::UnityEngine.UIElements.UIDocument
+  m_PanelSettings: {fileID: 11400000, guid: 7f03d0d4c98c940c2b63aae0558fe8df, type: 2}
+  m_ParentUI: {fileID: 0}
+  sourceAsset: {fileID: 9197481963319205126, guid: cad720b80d64b4866934f8f4f7bd32bc, type: 3}
+  m_SortingOrder: 0
+  m_Position: 0
+  m_WorldSpaceSizeMode: 1
+  m_WorldSpaceWidth: 1920
+  m_WorldSpaceHeight: 1080
+  m_PivotReferenceSize: 0
+  m_Pivot: 0
+  m_WorldSpaceCollider: {fileID: 0}
+--- !u!4 &1177257689
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1177257686}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -292,5 +292,5 @@ Transform:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 1950811715}
-  - {fileID: 1134684276}
+  - {fileID: 1103196071}
+  - {fileID: 1177257689}

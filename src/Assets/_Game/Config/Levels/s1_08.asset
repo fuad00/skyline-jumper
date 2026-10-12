@@ -10,28 +10,25 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8f2fa2758da654f7fbd34991128a30aa, type: 3}
-  m_Name: Level_easy1
+  m_Name: s1_08
   m_EditorClassIdentifier: StickmanJumper::StickmanJumper.Config.LevelConfig
-  Title: "\u0423\u0440\u043E\u0432\u0435\u043D\u044C 1"
-  Id: easy1
+  Title: "\u041F\u0440\u044B\u0436\u043E\u043A 8"
+  Id: s1_08
   Start:
-    X: -7.2
-    Width: 7.2
-    Height: 60
-    Style: 0
-  Target:
-    X: 30
-    Width: 6.8
-    Height: 16
+    X: -18.18
+    Width: 18.18
+    Height: 62
     Style: 1
-  Others:
-  - X: 11
-    Width: 7.4
-    Height: 9
-    Style: 2
-  ArrowPosition: 0.5
-  Wind: 1.5
-  TimeLimit: 30
-  TwoStarDistance: 1.5
-  ThreeStarDistance: 0.6
-  ThreeStarTime: 14
+  Target:
+    X: 12
+    Width: 16.27
+    Height: 16
+    Style: 0
+  Others: []
+  ArrowPosition: 0.3
+  Wind: 4
+  WindMax: 6
+  TimeLimit: 35
+  TwoStarDistance: 2
+  ThreeStarDistance: 0.75
+  ThreeStarTime: 17.5

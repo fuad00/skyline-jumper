@@ -20,7 +20,7 @@ namespace StickmanJumper.EditorTools
         public const string Folder = "Assets/_ThirdPartyPlaceholder";
         public const string SpritesFolder = Folder + "/Sprites";
         public const string AudioFolder = Folder + "/Audio";
-        public const float PixelsPerUnit = 50f; // 1 floor of the original facades = 50 px = 1 m
+        public const float PixelsPerUnit = 22f; // original's scale: a ~1.9 m stickman is a bit shorter than one floor (≈52 px)
 
         const string MainAtlas = "gameEngineSpriteSheetDefault-hd";
         const string SkylineAtlas = "backgroundSpriteSheetDefault-hd";
@@ -35,8 +35,10 @@ namespace StickmanJumper.EditorTools
             public readonly string Usage;
             public readonly Vector2 Pivot;
             public readonly bool Tiled;
+            /// <summary>Опору ставить на низ древка (ищем самый «плотный» столбец пикселей).</summary>
+            public readonly bool PolePivot;
 
-            public Item(string atlas, string source, string name, string usage, Vector2 pivot, bool tiled = false)
+            public Item(string atlas, string source, string name, string usage, Vector2 pivot, bool tiled = false, bool polePivot = false)
             {
                 Atlas = atlas;
                 Source = source;
@@ -44,6 +46,7 @@ namespace StickmanJumper.EditorTools
                 Usage = usage;
                 Pivot = pivot;
                 Tiled = tiled;
+                PolePivot = polePivot;
             }
         }
 
@@ -52,17 +55,30 @@ namespace StickmanJumper.EditorTools
 
         public static readonly Item[] Sprites =
         {
-            new Item(MainAtlas, "head.png", "head", "Голова стикмена", Center),
-            new Item(MainAtlas, "para01.png", "para01", "Кадр раскрытия купола 1", Bottom),
-            new Item(MainAtlas, "para02.png", "para02", "Кадр раскрытия купола 2", Bottom),
-            new Item(MainAtlas, "para03.png", "para03", "Кадр раскрытия купола 3", Bottom),
-            new Item(MainAtlas, "para04.png", "para04", "Кадр раскрытия купола 4", Bottom),
-            new Item(MainAtlas, "para05.png", "para05", "Кадр раскрытия купола 5", Bottom),
-            new Item(MainAtlas, "para06.png", "para06", "Кадр раскрытия купола 6", Bottom),
-            new Item(MainAtlas, "para07.png", "para07", "Кадр раскрытия купола 7", Bottom),
-            new Item(MainAtlas, "para08.png", "para08", "Кадр раскрытия купола 8", Bottom),
-            new Item(MainAtlas, "paraHolder.png", "paraHolder", "Раскрытый купол со стропами", Bottom),
-            new Item(null, "flag-hd.png", "flag", "Флажок на крыше цели", Bottom),
+            new Item(MainAtlas, "head.png", "head", "Голова стикмена сбоку", Center),
+            new Item(MainAtlas, "head01.png", "head01", "Голова стикмена анфас (под куполом)", Center),
+            new Item(MainAtlas, "downArrow.png", "downArrow", "Стрелка под меткой метров на крыше", Bottom),
+            new Item(MainAtlas, "para01.png", "para01", "Секция купола 1 (левая)", Center),
+            new Item(MainAtlas, "para02.png", "para02", "Секция купола 2", Center),
+            new Item(MainAtlas, "para03.png", "para03", "Секция купола 3", Center),
+            new Item(MainAtlas, "para04.png", "para04", "Секция купола 4", Center),
+            new Item(MainAtlas, "para05.png", "para05", "Секция купола 5", Center),
+            new Item(MainAtlas, "para06.png", "para06", "Секция купола 6", Center),
+            new Item(MainAtlas, "para07.png", "para07", "Секция купола 7", Center),
+            new Item(MainAtlas, "para08.png", "para08", "Секция купола 8 (правая)", Center),
+            new Item(MainAtlas, "paraHolder.png", "paraHolder", "Держатель строп над головой", Bottom),
+            new Item(null, "flag-hd.png", "flag", "Красный флажок цели", Bottom, false, true),
+            new Item(null, "lastFlag-hd.png", "lastFlag", "Флажок «Last»: откуда стартовал прошлый разбег", Bottom, false, true),
+            new Item(MainAtlas, "0.png", "digit0", "Цифра метки метров", Bottom),
+            new Item(MainAtlas, "1.png", "digit1", "Цифра метки метров", Bottom),
+            new Item(MainAtlas, "2.png", "digit2", "Цифра метки метров", Bottom),
+            new Item(MainAtlas, "3.png", "digit3", "Цифра метки метров", Bottom),
+            new Item(MainAtlas, "4.png", "digit4", "Цифра метки метров", Bottom),
+            new Item(MainAtlas, "5.png", "digit5", "Цифра метки метров", Bottom),
+            new Item(MainAtlas, "6.png", "digit6", "Цифра метки метров", Bottom),
+            new Item(MainAtlas, "7.png", "digit7", "Цифра метки метров", Bottom),
+            new Item(MainAtlas, "8.png", "digit8", "Цифра метки метров", Bottom),
+            new Item(MainAtlas, "9.png", "digit9", "Цифра метки метров", Bottom),
 
             new Item(MainAtlas, "building015Floors.png", "office_floors", "Стиль Office: этажи", Bottom, true),
             new Item(MainAtlas, "building01FirstFloor.png", "office_ground", "Стиль Office: первый этаж", Bottom),
@@ -243,10 +259,32 @@ namespace StickmanJumper.EditorTools
             var settings = new TextureImporterSettings();
             importer.ReadTextureSettings(settings);
             settings.spriteAlignment = (int)SpriteAlignment.Custom;
-            settings.spritePivot = item.Pivot;
+            settings.spritePivot = item.PolePivot ? FindPolePivot(path) : item.Pivot;
             settings.spriteMeshType = item.Tiled ? SpriteMeshType.FullRect : SpriteMeshType.Tight;
             importer.SetTextureSettings(settings);
             importer.SaveAndReimport();
+        }
+
+        /// <summary>Опора в низ древка флажка: самый заполненный столбец, самая нижняя непрозрачная строка.</summary>
+        static Vector2 FindPolePivot(string path)
+        {
+            var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+            tex.LoadImage(File.ReadAllBytes(path));
+            var px = tex.GetPixels32();
+            int w = tex.width, h = tex.height, bestCol = w / 2, bestCount = -1, bottom = h;
+            for (int x = 0; x < w; x++)
+            {
+                int count = 0;
+                for (int y = 0; y < h; y++)
+                    if (px[y * w + x].a > 128)
+                    {
+                        count++;
+                        bottom = Mathf.Min(bottom, y);
+                    }
+                if (count > bestCount) { bestCount = count; bestCol = x; }
+            }
+            UnityEngine.Object.DestroyImmediate(tex);
+            return new Vector2((bestCol + 0.5f) / w, Mathf.Clamp01(bottom / (float)h));
         }
 
         static void ConfigureAudio(string path, bool stream)

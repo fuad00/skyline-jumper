@@ -16,7 +16,7 @@ namespace StickmanJumper.Gameplay
         }
     }
 
-    /// <summary>Очки и звёзды. Звёзды как в оригинале: за близость к стрелке и за время.</summary>
+    /// <summary>Очки и звёзды. Звёзды как в оригинале: за близость к флажку и за время.</summary>
     public static class Scoring
     {
         public static JumpScore Evaluate(JumpOutcome outcome, float distance, float elapsed, float targetHalfWidth, LevelConfig level, ScoreConfig score)
@@ -35,7 +35,7 @@ namespace StickmanJumper.Gameplay
             return new JumpScore(points, stars);
         }
 
-        /// <summary>«Лучшее» в оригинале — самое близкое к стрелке расстояние.</summary>
+        /// <summary>«Лучшее» в оригинале — самое близкое к флажку расстояние.</summary>
         public static bool IsNewBest(float distance, float previousBest) =>
             !float.IsNaN(distance) && (float.IsNaN(previousBest) || previousBest < 0f || distance < previousBest);
     }

@@ -22,7 +22,7 @@ namespace StickmanJumper.Gameplay
     }
 
     /// <summary>
-    /// Геометрия уровня, посчитанная из LevelConfig: прямоугольники для столкновений, край крыши, стрелка.
+    /// Геометрия уровня, посчитанная из LevelConfig: прямоугольники для столкновений, край крыши, флажок цели.
     /// Чистый класс — его используют и игра, и тесты.
     /// </summary>
     public sealed class LevelLayout
@@ -78,7 +78,7 @@ namespace StickmanJumper.Gameplay
             return layout;
         }
 
-        /// <summary>Расстояние от точки до стрелки по горизонтали, м.</summary>
+        /// <summary>Расстояние от точки до флажка по горизонтали, м.</summary>
         public float DistanceToArrow(float x) => Mathf.Abs(x - ArrowX);
 
         static Rect ToRect(BuildingSpec b) => new Rect(b.X, 0f, Mathf.Max(0.1f, b.Width), Mathf.Max(0.1f, b.Height));

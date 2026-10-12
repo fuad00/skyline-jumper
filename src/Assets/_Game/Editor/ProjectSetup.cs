@@ -18,7 +18,7 @@ namespace StickmanJumper.EditorTools
     {
         const string Root = "Assets/_Game";
         public const string ScenePath = Root + "/Scenes/Game.unity";
-        static readonly Color SkyColor = new Color(0.55f, 0.75f, 0.95f);
+        static readonly Color SkyColor = new Color(0.9f, 0.89f, 0.85f); // paper, in case the sheet sprite is missing
 
         [MenuItem("Stickman Jumper/Setup Project (placeholders, art, configs, scene)")]
         public static void Run()
@@ -34,7 +34,7 @@ namespace StickmanJumper.EditorTools
             EnsureAsset<ScoreConfig>("ScoreConfig");
             EnsureAsset<CameraConfig>("CameraConfig");
             EnsureAsset<StickmanConfig>("StickmanConfig");
-            EnsureAsset<LevelConfig>("Level_easy1");
+            EnsureCatalog();
             FillArtBank(EnsureAsset<ArtBank>("ArtBank"));
             FillSoundBank(EnsureAsset<SoundBank>("SoundBank"));
             EnsurePanelSettings();
@@ -61,7 +61,7 @@ namespace StickmanJumper.EditorTools
             doc.visualTreeAsset = Load<VisualTreeAsset>("UI/Game.uxml");
             var game = rootGo.AddComponent<GameRoot>();
             var so = new SerializedObject(game);
-            Assign(so, "_level", Load<LevelConfig>("Config/Level_easy1.asset"));
+            Assign(so, "_catalog", Load<GameCatalog>("Config/GameCatalog.asset"));
             Assign(so, "_jumpConfig", Load<JumpConfig>("Config/JumpConfig.asset"));
             Assign(so, "_flightConfig", Load<FlightConfig>("Config/FlightConfig.asset"));
             Assign(so, "_scoreConfig", Load<ScoreConfig>("Config/ScoreConfig.asset"));
@@ -77,6 +77,96 @@ namespace StickmanJumper.EditorTools
             ApplyPlayerSettings();
             AssetDatabase.SaveAssets();
             Debug.Log("[Setup] Stickman Jumper project setup complete.");
+        }
+
+        // ------------------------------------------------------------------ levels
+
+        // Facade widths of the placeholder styles at PPU 22 (so buildings are not squashed): Office, Brick, Glass, Dark, Beige.
+        const float Office = 16.27f, Brick = 18.18f, Glass = 14.55f, Dark = 15.45f, Beige = 16.9f;
+
+        static BuildingSpec StartOn(BuildingStyle style, float width, float height) => new BuildingSpec(-width, width, height, style);
+        static BuildingSpec At(BuildingStyle style, float x, float width, float height) => new BuildingSpec(x, width, height, style);
+
+        sealed class LevelDef
+        {
+            public string Id;
+            public BuildingSpec Start, Target;
+            public BuildingSpec[] Others = new BuildingSpec[0];
+            public float Flag = 0.5f, Wind, Time = 30f;
+        }
+
+        /// <summary>Этап 1 «новичок» — 10 прыжков от простого к хитрому (ветер, встречный ветер, дома по пути).</summary>
+        static readonly LevelDef[] Stage1 =
+        {
+            new LevelDef { Id = "s1_01", Start = StartOn(BuildingStyle.Office, Office, 60f), Target = At(BuildingStyle.Brick, 17f, Brick, 18f), Wind = 1.5f },
+            new LevelDef { Id = "s1_02", Start = StartOn(BuildingStyle.Glass, Glass, 52f), Target = At(BuildingStyle.Beige, 13f, Beige, 20f), Flag = 0.35f, Wind = 0.5f },
+            new LevelDef { Id = "s1_03", Start = StartOn(BuildingStyle.Dark, Dark, 70f), Target = At(BuildingStyle.Office, 22f, Office, 12f), Flag = 0.6f, Wind = 2.5f, Time = 35f },
+            new LevelDef { Id = "s1_04", Start = StartOn(BuildingStyle.Office, Office, 65f), Target = At(BuildingStyle.Glass, 15f, Glass, 22f), Flag = 0.45f, Wind = -1.5f },
+            new LevelDef { Id = "s1_05", Start = StartOn(BuildingStyle.Beige, Beige, 72f), Others = new[] { At(BuildingStyle.Dark, 8f, Dark, 28f) }, Target = At(BuildingStyle.Brick, 30f, Brick, 14f), Wind = 3f, Time = 40f },
+            new LevelDef { Id = "s1_06", Start = StartOn(BuildingStyle.Glass, Glass, 58f), Target = At(BuildingStyle.Glass, 19f, Glass, 26f), Flag = 0.8f, Wind = 1f },
+            new LevelDef { Id = "s1_07", Start = StartOn(BuildingStyle.Office, Office, 82f), Target = At(BuildingStyle.Beige, 27f, Beige, 8f), Flag = 0.4f, Wind = 2f, Time = 40f },
+            new LevelDef { Id = "s1_08", Start = StartOn(BuildingStyle.Brick, Brick, 62f), Target = At(BuildingStyle.Office, 12f, Office, 16f), Flag = 0.3f, Wind = 4f, Time = 35f },
+            new LevelDef { Id = "s1_09", Start = StartOn(BuildingStyle.Glass, Glass, 76f), Others = new[] { At(BuildingStyle.Office, 5f, Office, 44f) }, Target = At(BuildingStyle.Dark, 27f, Dark, 20f), Wind = 1f, Time = 40f },
+            new LevelDef { Id = "s1_10", Start = StartOn(BuildingStyle.Dark, Dark, 90f), Others = new[] { At(BuildingStyle.Beige, 14f, Beige, 36f) }, Target = At(BuildingStyle.Brick, 36f, Brick, 10f), Wind = 3f, Time = 45f },
+        };
+
+        static void EnsureCatalog()
+        {
+            Directory.CreateDirectory(Root + "/Config/Levels");
+            // The very first prototype level lived at Config/Level_easy1; it is now Stage 1 / Level 1.
+            if (AssetDatabase.LoadAssetAtPath<LevelConfig>(Root + "/Config/Level_easy1.asset") != null)
+                AssetDatabase.DeleteAsset(Root + "/Config/Level_easy1.asset");
+
+            var levels = new LevelConfig[Stage1.Length];
+            for (int i = 0; i < Stage1.Length; i++) levels[i] = EnsureLevel(Stage1[i], i + 1);
+
+            var stage1 = EnsureAsset<StageConfig>("Stage1");
+            stage1.Number = 1;
+            stage1.Title = "новичок";
+            stage1.Subtitle = "первые прыжки";
+            stage1.StarsToUnlock = 0;
+            stage1.Levels = levels;
+            EditorUtility.SetDirty(stage1);
+
+            // Like the original's second card: locked until enough stars. Its levels come later.
+            var stage2 = EnsureAsset<StageConfig>("Stage2");
+            stage2.Number = 2;
+            stage2.Title = "опытный";
+            stage2.Subtitle = "тут ветрено";
+            stage2.StarsToUnlock = 20;
+            EditorUtility.SetDirty(stage2);
+
+            var catalog = EnsureAsset<GameCatalog>("GameCatalog");
+            catalog.Stages = new[] { stage1, stage2 };
+            EditorUtility.SetDirty(catalog);
+        }
+
+        /// <summary>Создаёт уровень, если его ещё нет. Уже созданный не трогаем — в нём могут быть твои цифры.</summary>
+        static LevelConfig EnsureLevel(LevelDef d, int number)
+        {
+            string path = $"{Root}/Config/Levels/{d.Id}.asset";
+            var level = AssetDatabase.LoadAssetAtPath<LevelConfig>(path);
+            if (level != null) return level;
+            level = ScriptableObject.CreateInstance<LevelConfig>();
+            level.Id = d.Id;
+            level.Title = $"Прыжок {number}";
+            level.Start = d.Start;
+            level.Target = d.Target;
+            level.Others = d.Others;
+            level.ArrowPosition = d.Flag;
+            level.Wind = d.Wind;
+            level.TimeLimit = d.Time;
+            level.ThreeStarTime = d.Time * 0.5f;
+            AssetDatabase.CreateAsset(level, path);
+            return level;
+        }
+
+        [MenuItem("Stickman Jumper/Rebuild Levels (overwrites level tuning!)")]
+        static void RebuildLevels()
+        {
+            foreach (var d in Stage1) AssetDatabase.DeleteAsset($"{Root}/Config/Levels/{d.Id}.asset");
+            EnsureCatalog();
+            AssetDatabase.SaveAssets();
         }
 
         static void Assign(SerializedObject so, string field, Object value)
@@ -109,12 +199,16 @@ namespace StickmanJumper.EditorTools
             art.White = GeneratedArt.Load("White");
             art.Circle = GeneratedArt.Load("Circle");
             art.Limb = GeneratedArt.Load("Limb");
-            art.SkyGradient = GeneratedArt.Load("Sky");
+            art.Paper = GeneratedArt.Load("Paper");
+            art.FogBand = GeneratedArt.Load("FogBand");
+            art.Dash = GeneratedArt.Load("Dash");
             art.Star = GeneratedArt.Load("Star");
             art.StarEmpty = GeneratedArt.Load("StarEmpty");
             art.IconTime = GeneratedArt.Load("IconClock");
             art.IconWind = GeneratedArt.Load("IconWind");
             art.IconZoom = GeneratedArt.Load("IconZoom");
+            art.IconPause = GeneratedArt.Load("IconPause");
+            art.IconLock = GeneratedArt.Load("IconLock");
 
             art.Buildings = new[]
             {
@@ -125,6 +219,8 @@ namespace StickmanJumper.EditorTools
                 Building("beige", new Color(0.8f, 0.72f, 0.6f)),
             };
             art.Head = PlaceholderImporter.LoadSprite("head");
+            art.HeadFront = PlaceholderImporter.LoadSprite("head01");
+            art.MarkerArrow = PlaceholderImporter.LoadSprite("downArrow");
             var frames = new System.Collections.Generic.List<Sprite>();
             for (int i = 1; i <= 8; i++)
             {
@@ -133,8 +229,9 @@ namespace StickmanJumper.EditorTools
             }
             art.CanopyOpening = frames.ToArray();
             art.CanopyOpen = PlaceholderImporter.LoadSprite("paraHolder");
-            art.Arrow = GeneratedArt.Load("Arrow");
             art.Flag = PlaceholderImporter.LoadSprite("flag");
+            art.FlagLast = PlaceholderImporter.LoadSprite("lastFlag");
+            art.Digits = LoadAll("digit0", "digit1", "digit2", "digit3", "digit4", "digit5", "digit6", "digit7", "digit8", "digit9");
             art.Skyline = PlaceholderImporter.LoadSprite("skyline");
             art.Clouds = LoadAll("cloud1", "cloud2", "cloud3");
             art.Trees = LoadAll("tree01", "tree02", "tree03", "tree04");

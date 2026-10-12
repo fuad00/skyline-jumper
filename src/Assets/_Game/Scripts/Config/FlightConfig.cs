@@ -14,11 +14,11 @@ namespace StickmanJumper.Config
 
         [Header("Парашют")]
         [Tooltip("Сколько секунд купол раскрывается полностью.")]
-        public float CanopyOpenTime = 0.8f;
+        public float CanopyOpenTime = 0.6f;
         [Tooltip("Скорость спуска под полностью раскрытым куполом, м/с.")]
         public float CanopyTerminalSpeed = 4.5f;
-        [Tooltip("Купол сам немного летит вперёд (в сторону прыжка), м/с. Рулить им нельзя, как в оригинале.")]
-        public float CanopyGlideSpeed = 1.2f;
+        [Tooltip("Как резко купол гасит скорость по X (1/с). 6 = за полсекунды остаётся только снос ветром. Рулить нельзя, как в оригинале.")]
+        public float CanopyBrakeX = 6f;
 
         [Header("Посадка и удары")]
         [Tooltip("Максимальная скорость касания, при которой стикмен приземляется на ноги, м/с. Быстрее — разбивается.")]

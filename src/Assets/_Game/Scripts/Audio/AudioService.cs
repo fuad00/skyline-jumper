@@ -39,6 +39,16 @@ namespace StickmanJumper.Audio
             return s;
         }
 
+        /// <summary>Все звуки вкл/выкл (кнопка «звук» в меню).</summary>
+        public void SetSound(bool on) => AudioListener.volume = on ? 1f : 0f;
+
+        /// <summary>Музыка вкл/выкл (кнопка «музыка» в меню).</summary>
+        public void SetMusic(bool on)
+        {
+            _music.mute = !on;
+            if (on && _music.clip != null && !_music.isPlaying) _music.Play();
+        }
+
         public void ResetRun()
         {
             _yelled = false;

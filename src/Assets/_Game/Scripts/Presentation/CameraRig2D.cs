@@ -34,8 +34,17 @@ namespace StickmanJumper.Presentation
 
         public void Shake(float amount) => _shake = Mathf.Max(_shake, amount);
 
-        /// <summary>Размер кадра, чтобы целиком показать прямоугольник.</summary>
-        public float FitSize(Rect r) => Mathf.Max(r.height * 0.5f, r.width * 0.5f / Mathf.Max(0.1f, _cam.aspect)) + _cfg.OverviewMargin;
+        /// <summary>Размер кадра, чтобы целиком показать прямоугольник (с запасом снизу под подсказку и сверху под HUD).</summary>
+        public float FitSize(Rect r)
+        {
+            r = PadForUI(r);
+            return Mathf.Max(r.height * 0.5f, r.width * 0.5f / Mathf.Max(0.1f, _cam.aspect)) + _cfg.OverviewMargin;
+        }
+
+        /// <summary>Центр обзора с тем же запасом, что и <see cref="FitSize"/>.</summary>
+        public static Vector2 OverviewCenter(Rect r) => PadForUI(r).center;
+
+        static Rect PadForUI(Rect r) => Rect.MinMaxRect(r.xMin, r.yMin - r.height * 0.22f, r.xMax, r.yMax + r.height * 0.12f);
 
         public void Update(Vector2 focus, Vector2 velocity, JumpPhase phase, bool ragdoll, Rect overview, float dt)
         {
@@ -43,7 +52,7 @@ namespace StickmanJumper.Presentation
             float targetSize;
             if (Overview || phase == JumpPhase.Ready)
             {
-                targetCenter = overview.center;
+                targetCenter = OverviewCenter(overview);
                 targetSize = FitSize(overview);
             }
             else if (phase.IsOnRoof())
@@ -67,8 +76,10 @@ namespace StickmanJumper.Presentation
             float ks = 1f - Mathf.Exp(-_cfg.SizeSharpness * dt);
             _center = Vector2.Lerp(_center, targetCenter, kc);
             _size = Mathf.Lerp(_size, targetSize, ks);
-            // Never show much below the street.
-            _center.y = Mathf.Max(_center.y, _size - 2.5f);
+            // Never show much below the street. In the overview the bottom of the screen is under the hint, so let the
+            // street sit higher there.
+            bool showAll = Overview || phase == JumpPhase.Ready;
+            _center.y = Mathf.Max(_center.y, showAll ? _size * 0.76f - 2.5f : _size - 2.5f);
 
             Vector2 shake = Vector2.zero;
             if (_shake > 0.001f)
@@ -77,6 +88,15 @@ namespace StickmanJumper.Presentation
                 _shake = Mathf.MoveTowards(_shake, 0f, dt * 1.5f);
             }
             Apply(shake);
+        }
+
+        /// <summary>Спокойная камера для меню: плавно едет к заданному кадру.</summary>
+        public void UpdateFixed(Vector2 center, float size, float dt)
+        {
+            float k = 1f - Mathf.Exp(-3f * dt);
+            _center = Vector2.Lerp(_center, center, k);
+            _size = Mathf.Lerp(_size, size, k);
+            Apply(Vector2.zero);
         }
 
         void Apply(Vector2 shake)

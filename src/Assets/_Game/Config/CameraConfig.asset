@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 089947aed98c94bdb8f9cb4ddfb5ea17, type: 3}
   m_Name: CameraConfig
   m_EditorClassIdentifier: StickmanJumper::StickmanJumper.Config.CameraConfig
-  SizeOnRoof: 6
-  SizeInFlight: 9
-  SizePerSpeed: 0.14
-  SizeMax: 13
+  SizeOnRoof: 16
+  SizeInFlight: 17.5
+  SizePerSpeed: 0.08
+  SizeMax: 21
   SizeSharpness: 2.5
   FollowSharpness: 6
   LookAhead: 0.35

@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba96f4c91f1644b1ab0dec527cc5f94e, type: 3}
+  m_Name: Stage1
+  m_EditorClassIdentifier: StickmanJumper::StickmanJumper.Config.StageConfig
+  Number: 1
+  Title: "\u043D\u043E\u0432\u0438\u0447\u043E\u043A"
+  Subtitle: "\u043F\u0435\u0440\u0432\u044B\u0435 \u043F\u0440\u044B\u0436\u043A\u0438"
+  StarsToUnlock: 0
+  Levels:
+  - {fileID: 11400000, guid: a247d9fe3a4cd455d979749c7f6735fc, type: 2}
+  - {fileID: 11400000, guid: 1d1d26983bc5a4107aa9a9c9f74f750f, type: 2}
+  - {fileID: 11400000, guid: b055a2e1f43f940e6834546459cc69ee, type: 2}
+  - {fileID: 11400000, guid: eb6db16635bd043b3bb893f5ed56ac4a, type: 2}
+  - {fileID: 11400000, guid: 4a2dbf3b52865421c99655996111f584, type: 2}
+  - {fileID: 11400000, guid: 699c11efa4e10476e9b2c37d2e9895ba, type: 2}
+  - {fileID: 11400000, guid: 71db16bd7f7d24264b9ab21bae730e3d, type: 2}
+  - {fileID: 11400000, guid: 00a5a8bd930fc4e0980d93efa93f0dae, type: 2}
+  - {fileID: 11400000, guid: 2522c1f704d774800a4f24e67fbc0e8a, type: 2}
+  - {fileID: 11400000, guid: a340855d7fd0a42a0a1de0c827e6b359, type: 2}

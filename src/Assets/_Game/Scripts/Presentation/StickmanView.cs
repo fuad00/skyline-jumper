@@ -8,13 +8,13 @@ using UnityEngine;
 namespace StickmanJumper.Presentation
 {
     /// <summary>
-    /// Стикмен из капсул (своя графика) с головой-спрайтом. Пока жив — позу считает код (кинематика по углам).
+    /// Стикмен из капсул (своя графика) с головой-спрайтом. Пока жив — позу считает код (ходьба и бег через IK ног,
+    /// остальное — позами), смотрит туда, куда идёт: пятится от края — разворачивается спиной к нему, бежит — лицом.
     /// При ударе каждая кость получает Rigidbody2D и шарнир — дальше честный ragdoll на физике Unity.
-    /// Все кости лежат плоско под одним корнем, поэтому превращение в ragdoll — это просто «добавить физику».
     /// </summary>
     public sealed class StickmanView
     {
-        enum B { Torso, Head, ArmBackUp, ArmBackLow, LegBackUp, LegBackLow, LegFrontUp, LegFrontLow, ArmFrontUp, ArmFrontLow, Count }
+        enum B { Torso, Head, ArmBackUp, ArmBackLow, LegBackUp, LegBackLow, FootBack, LegFrontUp, LegFrontLow, FootFront, ArmFrontUp, ArmFrontLow, Count }
 
         sealed class Bone
         {
@@ -34,13 +34,19 @@ namespace StickmanJumper.Presentation
         readonly Transform _root;
         readonly Bone[] _bones = new Bone[(int)B.Count];
         readonly CanopyView _canopy;
-        StickmanPose _pose = StickmanPose.Stand;
-        float _stridePhase, _time;
+        SpriteRenderer _headRenderer;
+        readonly List<SpriteRenderer> _backShapes = new List<SpriteRenderer>();
+        bool _frontView;
+        StickmanPose _pose;
+        float _gaitPhase, _time, _phaseTime, _facing = 1f;
+        JumpPhase _lastPhase = JumpPhase.Ready;
         bool _ragdoll;
 
         public Transform Root => _root;
         public bool IsRagdoll => _ragdoll;
         public CanopyView Canopy => _canopy;
+        /// <summary>+1 — смотрит вправо (к краю), −1 — влево.</summary>
+        public float Facing => _facing;
 
         /// <summary>Где сейчас середина тела (для камеры после удара).</summary>
         public Vector2 Center => _ragdoll ? (Vector2)_bones[(int)B.Torso].T.position : (Vector2)_root.position + Vector2.up * (_cfg.UpperLegLength + _cfg.LowerLegLength);
@@ -60,15 +66,18 @@ namespace StickmanJumper.Presentation
             MakeLimb(B.ArmBackUp, "ArmBackUpper", cfg.UpperArmLength, t, cfg.BackColor, SortOrder.StickmanBack, B.Torso);
             MakeLimb(B.ArmBackLow, "ArmBackLower", cfg.LowerArmLength, t, cfg.BackColor, SortOrder.StickmanBack, B.ArmBackUp);
             MakeLimb(B.LegBackUp, "LegBackUpper", cfg.UpperLegLength, t * 1.1f, cfg.BackColor, SortOrder.StickmanBack, B.Torso);
-            MakeLimb(B.LegBackLow, "LegBackLower", cfg.LowerLegLength, t * 1.1f, cfg.BackColor, SortOrder.StickmanBack, B.LegBackUp);
-            MakeLimb(B.Torso, "Torso", cfg.TorsoLength, t * 1.35f, cfg.FrontColor, SortOrder.StickmanBody, B.Count);
+            MakeLimb(B.LegBackLow, "LegBackLower", cfg.LowerLegLength, t * 1.05f, cfg.BackColor, SortOrder.StickmanBack, B.LegBackUp);
+            MakeLimb(B.FootBack, "FootBack", cfg.FootLength, t * 0.95f, cfg.BackColor, SortOrder.StickmanBack, B.LegBackLow);
+            MakeLimb(B.Torso, "Torso", cfg.TorsoLength, t * 1.45f, cfg.FrontColor, SortOrder.StickmanBody, B.Count);
             MakeLimb(B.LegFrontUp, "LegFrontUpper", cfg.UpperLegLength, t * 1.1f, cfg.FrontColor, SortOrder.StickmanFront, B.Torso);
-            MakeLimb(B.LegFrontLow, "LegFrontLower", cfg.LowerLegLength, t * 1.1f, cfg.FrontColor, SortOrder.StickmanFront, B.LegFrontUp);
-            MakeLimb(B.ArmFrontUp, "ArmFrontUpper", cfg.UpperArmLength, t, cfg.FrontColor, SortOrder.StickmanFront, B.Torso);
-            MakeLimb(B.ArmFrontLow, "ArmFrontLower", cfg.LowerArmLength, t, cfg.FrontColor, SortOrder.StickmanFront, B.ArmFrontUp);
+            MakeLimb(B.LegFrontLow, "LegFrontLower", cfg.LowerLegLength, t * 1.05f, cfg.FrontColor, SortOrder.StickmanFront, B.LegFrontUp);
+            MakeLimb(B.FootFront, "FootFront", cfg.FootLength, t * 0.95f, cfg.FrontColor, SortOrder.StickmanFront, B.LegFrontLow);
+            MakeLimb(B.ArmFrontUp, "ArmFrontUpper", cfg.UpperArmLength, t, cfg.FrontColor, SortOrder.StickmanFront + 1, B.Torso);
+            MakeLimb(B.ArmFrontLow, "ArmFrontLower", cfg.LowerArmLength, t, cfg.FrontColor, SortOrder.StickmanFront + 1, B.ArmFrontUp);
             MakeHead();
             _canopy = new CanopyView(_root, art, _kit);
-            ApplyPose(Vector2.zero);
+            _pose = StickmanPose.Stand(0f, cfg);
+            ApplyPose();
         }
 
         public void Destroy()
@@ -87,6 +96,7 @@ namespace StickmanJumper.Presentation
             if (_art.Limb != null)
             {
                 var r = _kit.Make("Shape", go.transform, _art.Limb, order, color);
+                if (order == SortOrder.StickmanBack) _backShapes.Add(r);
                 r.drawMode = SpriteDrawMode.Sliced;
                 // Limb sprite pivot is its top centre; extend half a thickness past both joints so ends overlap.
                 r.size = new Vector2(thickness, length + thickness);
@@ -105,10 +115,10 @@ namespace StickmanJumper.Presentation
             go.transform.SetParent(_root, false);
             float size = _cfg.HeadSize;
             var sprite = _art.Head != null ? _art.Head : _art.Circle;
-            var r = _kit.Make("Shape", go.transform, sprite, SortOrder.StickmanHead, _art.Head != null ? Color.white : _cfg.FrontColor);
+            _headRenderer = _kit.Make("Shape", go.transform, sprite, SortOrder.StickmanHead, _art.Head != null ? Color.white : _cfg.FrontColor);
             float s = size / Mathf.Max(0.001f, sprite.bounds.size.y);
-            r.transform.localScale = new Vector3(s, s, 1f);
-            r.transform.localPosition = -(Vector3)(sprite.bounds.center * s);
+            _headRenderer.transform.localScale = new Vector3(s, s, 1f);
+            _headRenderer.transform.localPosition = -(Vector3)(sprite.bounds.center * s);
             _bones[(int)B.Head] = new Bone { T = go.transform, Length = size, Thickness = size, Parent = B.Torso };
         }
 
@@ -119,79 +129,116 @@ namespace StickmanJumper.Presentation
         {
             if (_ragdoll) return;
             _time += dt;
-            var target = TargetPose(s, dt);
-            float k = 1f - Mathf.Exp(-_cfg.PoseSharpness * dt);
+            if (s.Phase != _lastPhase)
+            {
+                _lastPhase = s.Phase;
+                _phaseTime = 0f;
+            }
+            else _phaseTime += dt;
+
+            // Walking back he turns his back to the edge; otherwise he faces the jump direction (instant flip, like the original).
+            _facing = s.Phase == JumpPhase.BackingUp || s.Phase == JumpPhase.AtBackWall ? -1f : 1f;
+
+            var target = TargetPose(s, dt, out float sharpness);
+            float k = 1f - Mathf.Exp(-sharpness * dt);
             _pose = StickmanPose.Lerp(_pose, target, k);
             _root.position = new Vector3(s.Feet.x, s.Feet.y, 0f);
-            ApplyPose(s.Velocity);
-            _canopy.UpdateAttached(s, ShoulderWorld(), _pose.Body, _time, dt);
+            ApplyPose();
+            _canopy.UpdateAttached(s, ShoulderWorld(), _facing * _pose.Body, _time, dt);
         }
 
-        StickmanPose TargetPose(JumpSession s, float dt)
+        StickmanPose TargetPose(JumpSession s, float dt, out float sharpness)
         {
+            sharpness = _cfg.PoseSharpness;
+            float speed = Mathf.Abs(s.Velocity.x);
             switch (s.Phase)
             {
                 case JumpPhase.BackingUp:
-                    _stridePhase -= Mathf.Abs(s.Velocity.x) * dt / Mathf.Max(0.1f, _cfg.StrideLength * 0.6f) * Mathf.PI * 2f;
-                    return StickmanPose.Stride(_stridePhase, 0.45f, -4f);
                 case JumpPhase.Running:
-                    _stridePhase += Mathf.Abs(s.Velocity.x) * dt / Mathf.Max(0.1f, _cfg.StrideLength) * Mathf.PI * 2f;
-                    float run = Mathf.Clamp01(s.Velocity.x / 6f);
-                    return StickmanPose.Stride(_stridePhase, Mathf.Lerp(0.35f, 1f, run), Mathf.Lerp(4f, 16f, run));
+                    _gaitPhase += speed * dt / StickmanPose.Stride(speed, _cfg);
+                    sharpness = 30f; // locomotion is already smooth; follow it closely so feet stay planted
+                    return StickmanPose.Locomotion(_gaitPhase, speed, _cfg);
                 case JumpPhase.Airborne:
-                    if (s.Canopy > 0.6f) return StickmanPose.Hang(_time, Mathf.Clamp(-s.Velocity.x * 2.5f, -14f, 14f) + Mathf.Sin(_time * 1.4f) * 5f);
-                    return StickmanPose.Flail(_time, Mathf.Clamp01(-s.Velocity.y / 25f));
+                    if (s.CanopyDeployed && s.Canopy > 0.35f)
+                    {
+                        sharpness = 6f;
+                        float sway = Mathf.Clamp(-(s.Velocity.x - s.Level.Wind) * 2.5f, -16f, 16f) + Mathf.Sin(_time * 1.3f) * 4f;
+                        return StickmanPose.Hang(_time, sway, _cfg);
+                    }
+                    if (_phaseTime < 0.3f) return StickmanPose.Takeoff(_cfg);
+                    sharpness = 7f;
+                    return StickmanPose.Dive(s.Velocity, _time, _cfg);
                 case JumpPhase.Landed:
-                    return s.LandedOnTarget ? StickmanPose.Cheer(_time) : StickmanPose.Shrug(_time);
+                    if (_phaseTime < 0.35f)
+                    {
+                        sharpness = 22f;
+                        return StickmanPose.Crouch(Mathf.Clamp01(s.ImpactVelocity.magnitude / 6f), _cfg);
+                    }
+                    return s.LandedOnTarget ? StickmanPose.Cheer(_phaseTime, _cfg) : StickmanPose.Shrug(_time, _cfg);
                 case JumpPhase.TimeUp:
-                    return StickmanPose.Shrug(_time);
+                    return StickmanPose.Shrug(_time, _cfg);
                 default:
-                    return StickmanPose.Stand;
+                    _gaitPhase = 0f;
+                    return StickmanPose.Stand(_time, _cfg);
             }
         }
 
-        static Vector2 Dir(float deg)
+        /// <summary>Анфас (под куполом): голова с двумя глазами, все конечности одного цвета.</summary>
+        void SetFrontView(bool front)
         {
-            float r = deg * Mathf.Deg2Rad;
-            return new Vector2(Mathf.Sin(r), -Mathf.Cos(r));
+            if (front == _frontView) return;
+            _frontView = front;
+            var sprite = front && _art.HeadFront != null ? _art.HeadFront : _art.Head;
+            if (_headRenderer != null && sprite != null) _headRenderer.sprite = sprite;
+            foreach (var r in _backShapes) r.color = front ? _cfg.FrontColor : _cfg.BackColor;
         }
-
-        Vector2 PelvisLocal => new Vector2(0f, _cfg.UpperLegLength + _cfg.LowerLegLength - 0.02f + _pose.Bob);
 
         Vector2 ShoulderWorld()
         {
             var torso = _bones[(int)B.Torso];
-            return (Vector2)torso.T.position + Dir(torso.T.eulerAngles.z) * (torso.Length - 0.04f);
+            return (Vector2)torso.T.position + StickmanPose.Dir(torso.T.eulerAngles.z) * (torso.Length - 0.05f);
         }
 
-        void ApplyPose(Vector2 velocity)
+        /// <summary>Кинематика: углы позы → положения костей. Считаем «лицом вправо», потом зеркалим по facing.</summary>
+        void ApplyPose()
         {
             var p = _pose;
-            Vector2 pelvis = (Vector2)_root.position + Rotate(PelvisLocal, p.Body);
+            SetFrontView(p.FrontView > 0.5f);
+            // The whole figure turns around the middle of the body (where the collision box centre is), not the feet.
+            Vector2 pivot = new Vector2(0f, _cfg.UpperLegLength + _cfg.LowerLegLength + _cfg.AnkleHeight + _cfg.TorsoLength * 0.4f);
+            Vector2 pelvis = pivot + Rotate(new Vector2(p.PelvisX, p.PelvisY) - pivot, p.Body);
             float torsoA = p.Body + p.Torso;
-            Vector2 torsoEnd = pelvis + Dir(torsoA) * _cfg.TorsoLength;
-            Vector2 shoulder = pelvis + Dir(torsoA) * (_cfg.TorsoLength - 0.04f);
+            Vector2 torsoEnd = pelvis + StickmanPose.Dir(torsoA) * _cfg.TorsoLength;
+            Vector2 shoulder = pelvis + StickmanPose.Dir(torsoA) * (_cfg.TorsoLength - 0.05f);
             Set(B.Torso, pelvis, torsoA);
             float headA = torsoA + p.Head;
-            Set(B.Head, torsoEnd + Dir(headA) * (_cfg.HeadSize * 0.5f + 0.03f), headA - 180f);
+            // The big head sits right on the shoulders, like the original (no visible neck).
+            Set(B.Head, torsoEnd + StickmanPose.Dir(headA) * (_cfg.HeadSize * 0.42f), headA - 180f + p.HeadLook);
 
             Chain(B.ArmFrontUp, B.ArmFrontLow, shoulder, p.Body + p.ArmFront, p.ElbowFront);
             Chain(B.ArmBackUp, B.ArmBackLow, shoulder, p.Body + p.ArmBack, p.ElbowBack);
-            Chain(B.LegFrontUp, B.LegFrontLow, pelvis, p.Body + p.LegFront, p.KneeFront);
-            Chain(B.LegBackUp, B.LegBackLow, pelvis, p.Body + p.LegBack, p.KneeBack);
+            Vector2 ankleF = Chain(B.LegFrontUp, B.LegFrontLow, pelvis, p.Body + p.LegFront, p.KneeFront);
+            Vector2 ankleB = Chain(B.LegBackUp, B.LegBackLow, pelvis, p.Body + p.LegBack, p.KneeBack);
+            Set(B.FootFront, ankleF, p.Body + p.FootFront);
+            Set(B.FootBack, ankleB, p.Body + p.FootBack);
+            if (_headRenderer != null) _headRenderer.flipX = _facing < 0f;
         }
 
-        void Chain(B upper, B lower, Vector2 start, float angle, float bend)
+        Vector2 Chain(B upper, B lower, Vector2 start, float angle, float bend)
         {
             Set(upper, start, angle);
-            Set(lower, start + Dir(angle) * _bones[(int)upper].Length, angle + bend);
+            Vector2 joint = start + StickmanPose.Dir(angle) * _bones[(int)upper].Length;
+            Set(lower, joint, angle + bend);
+            return joint + StickmanPose.Dir(angle + bend) * _bones[(int)lower].Length;
         }
 
-        void Set(B id, Vector2 pos, float angle)
+        /// <summary>local — «лицом вправо» относительно точки между ступнями; зеркалим по facing.</summary>
+        void Set(B id, Vector2 local, float angle)
         {
             var t = _bones[(int)id].T;
-            t.position = new Vector3(pos.x, pos.y, 0f);
-            t.rotation = Quaternion.Euler(0f, 0f, angle);
+            Vector2 root = _root.position;
+            t.position = new Vector3(root.x + local.x * _facing, root.y + local.y, 0f);
+            t.rotation = Quaternion.Euler(0f, 0f, angle * _facing);
         }
 
         static Vector2 Rotate(Vector2 v, float deg)
@@ -212,13 +259,13 @@ namespace StickmanJumper.Presentation
             var rng = new System.Random(seed);
             var mat = new PhysicsMaterial2D("Stickman") { friction = 0.6f, bounciness = 0.2f };
             var colliders = new List<Collider2D>();
-            float massUnit = _cfg.Mass / 10f;
+            float massUnit = _cfg.Mass / 12f;
 
             for (int i = 0; i < (int)B.Count; i++)
             {
                 var bone = _bones[i];
                 var rb = bone.T.gameObject.AddComponent<Rigidbody2D>();
-                rb.mass = massUnit * (i == (int)B.Torso ? 3f : i == (int)B.Head ? 1f : 0.75f);
+                rb.mass = massUnit * (i == (int)B.Torso ? 3f : i == (int)B.Head ? 1f : 0.7f);
                 rb.linearDamping = 0.05f;
                 rb.angularDamping = 0.4f;
                 rb.interpolation = RigidbodyInterpolation2D.Interpolate;
@@ -261,10 +308,9 @@ namespace StickmanJumper.Presentation
                     joint.anchor = i == (int)B.Head ? new Vector2(0f, -_cfg.HeadSize * 0.5f) : Vector2.zero;
                     joint.enableCollision = false;
                     joint.useLimits = true;
-                    // Unity measures a hinge as (parent − child) relative to the pose at creation, so absolute ranges
-                    // are shifted by the current bend.
+                    // Unity measures a hinge as (parent − child) relative to the pose at creation; mirrored when facing left.
                     float current = Mathf.DeltaAngle(bone.T.eulerAngles.z, _bones[(int)bone.Parent].T.eulerAngles.z);
-                    joint.limits = Limits((B)i, current);
+                    joint.limits = Limits((B)i, current, _facing);
                 }
                 float jitter = ((float)rng.NextDouble() - 0.5f) * 2f;
                 bone.Body.linearVelocity = velocity + new Vector2(jitter, (float)rng.NextDouble()) * 0.8f;
@@ -273,16 +319,19 @@ namespace StickmanJumper.Presentation
         }
 
         /// <param name="current">Current (parent − child) angle, degrees.</param>
-        static JointAngleLimits2D Limits(B id, float current)
+        static JointAngleLimits2D Limits(B id, float current, float facing)
         {
             switch (id)
             {
                 case B.LegFrontLow:
-                case B.LegBackLow: // knee: straight (0) to folded backwards (+150)
-                    return Absolute(-5f, 150f, current);
+                case B.LegBackLow: // knee: straight (0) to folded backwards (+150 facing right)
+                    return Absolute(-5f, 150f, current, facing);
                 case B.ArmFrontLow:
-                case B.ArmBackLow: // elbow: straight (0) to folded forwards (−150)
-                    return Absolute(-150f, 5f, current);
+                case B.ArmBackLow: // elbow: straight (0) to folded forwards (−150 facing right)
+                    return Absolute(-150f, 5f, current, facing);
+                case B.FootFront:
+                case B.FootBack:
+                    return new JointAngleLimits2D { min = -35f, max = 35f };
                 case B.Head:
                     return new JointAngleLimits2D { min = -45f, max = 45f };
                 case B.LegFrontUp:
@@ -293,8 +342,16 @@ namespace StickmanJumper.Presentation
             }
         }
 
-        static JointAngleLimits2D Absolute(float min, float max, float current) =>
-            new JointAngleLimits2D { min = Mathf.Min(min - current, 0f), max = Mathf.Max(max - current, 0f) };
+        static JointAngleLimits2D Absolute(float min, float max, float current, float facing)
+        {
+            if (facing < 0f)
+            {
+                float t = min;
+                min = -max;
+                max = -t;
+            }
+            return new JointAngleLimits2D { min = Mathf.Min(min - current, 0f), max = Mathf.Max(max - current, 0f) };
+        }
 
         /// <summary>Отделившийся купол продолжает падать сам.</summary>
         public void UpdateDetached(float dt) => _canopy.UpdateDetached(dt);

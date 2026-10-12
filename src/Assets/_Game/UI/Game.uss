@@ -1,5 +1,5 @@
-/* Stickman Jumper runtime UI. Landscape reference canvas 1920 x 1080 (PanelSettings: scale with screen size, Expand).
-   Font: Rubik ExtraBold (OFL, has Cyrillic). Few numbers on screen: timer + wind only. */
+/* Stickman Jumper runtime UI in the original's style: pale-blue panels with a thick navy outline on graph paper.
+   Landscape reference canvas 1920 x 1080 (PanelSettings: scale with screen size, Expand). Font: Rubik ExtraBold (OFL). */
 
 .root {
     position: absolute;
@@ -8,11 +8,33 @@
     right: 0;
     bottom: 0;
     -unity-font-definition: url("../Fonts/Rubik-ExtraBold.ttf");
-    color: rgb(255, 255, 255);
+    color: rgb(16, 28, 48);
 }
 
 .grow {
     flex-grow: 1;
+}
+
+/* ---------- panels ---------- */
+
+.panel {
+    background-color: rgb(196, 226, 242);
+    border-width: 6px;
+    border-color: rgb(16, 28, 48);
+    border-radius: 20px;
+    margin: 0 0 0 18px;
+}
+
+.icon {
+    width: 64px;
+    height: 64px;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(16, 28, 48);
+}
+
+.icon--big {
+    width: 70px;
+    height: 70px;
 }
 
 /* ---------- HUD ---------- */
@@ -22,187 +44,582 @@
     left: 0;
     top: 0;
     right: 0;
-    padding: 36px 48px 0 48px;
-}
-
-.hud-row {
     flex-direction: row;
-    align-items: center;
+    align-items: flex-start;
+    padding: 28px 36px 0 36px;
 }
 
-.pill {
-    flex-direction: row;
-    align-items: center;
-    margin-right: 20px;
-    padding: 8px 30px 8px 14px;
-    border-radius: 40px;
-    background-color: rgba(30, 38, 52, 0.78);
-    border-bottom-width: 6px;
-    border-color: rgba(10, 14, 22, 0.85);
+.minimap {
+    width: 300px;
+    height: 330px;
+    border-width: 6px;
+    border-color: rgb(16, 28, 48);
+    border-radius: 16px;
+    background-color: rgba(90, 160, 215, 0.42);
 }
 
-.pill-text {
-    font-size: 46px;
-    -unity-text-align: middle-left;
+.wind-panel {
+    height: 104px;
+    width: 300px;
+    padding: 6px 18px 12px 18px;
+    justify-content: space-between;
+}
+
+.panel-caption {
+    font-size: 26px;
+    -unity-text-align: middle-center;
+    margin: 0;
     padding: 0;
-    margin: 0;
-    text-shadow: 0 3px 0 rgba(0, 0, 0, 0.45);
 }
 
-.icon {
-    width: 56px;
-    height: 56px;
-    margin-right: 12px;
+.wind-track {
+    height: 34px;
+    border-radius: 10px;
+    background-color: rgb(16, 28, 48);
+    padding: 5px;
+    flex-direction: row;
+}
+
+.wind-fill {
+    height: 100%;
+    width: 50%;
+    border-radius: 6px;
+    background-color: rgb(255, 255, 255);
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.wind-arrow {
+    width: 30px;
+    height: 30px;
+    margin-right: -4px;
     -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(16, 28, 48);
 }
 
-.icon--wind {
-    width: 64px;
+.time-panel {
+    height: 104px;
+    flex-direction: row;
+    align-items: center;
+    padding: 0 14px 0 14px;
 }
 
-.icon--zoom {
+.time-screen {
+    width: 230px;
+    height: 72px;
+    margin-left: 12px;
+    border-radius: 12px;
+    background-color: rgb(236, 246, 250);
+    border-width: 3px;
+    border-color: rgb(16, 28, 48);
+    justify-content: center;
+}
+
+.time-text {
+    font-size: 54px;
+    -unity-text-align: middle-center;
     margin: 0;
-    width: 64px;
-    height: 64px;
+    padding: 0;
+    letter-spacing: 4px;
 }
 
-.btn-round {
+.time-text--low {
+    color: rgb(214, 36, 30);
+}
+
+.btn-square {
     width: 104px;
     height: 104px;
-    border-radius: 52px;
     padding: 0;
-    margin: 0;
     align-items: center;
     justify-content: center;
-    background-color: rgba(30, 38, 52, 0.78);
-    border-width: 0;
-    border-bottom-width: 6px;
-    border-color: rgba(10, 14, 22, 0.85);
 }
 
-.btn-round:hover {
-    background-color: rgba(48, 60, 80, 0.85);
+.btn-square:hover {
+    background-color: rgb(214, 238, 250);
 }
 
-.btn-round--on {
-    background-color: rgb(255, 196, 40);
-    border-color: rgb(196, 128, 10);
+.btn-square--on {
+    background-color: rgb(255, 214, 72);
 }
 
 /* ---------- hint ---------- */
 
 .hint {
     position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 64px;
-    font-size: 54px;
+    bottom: 48px;
+    align-self: center;
+    font-size: 46px;
     -unity-text-align: middle-center;
-    text-shadow: 0 4px 0 rgba(0, 0, 0, 0.55);
-    color: rgb(255, 244, 214);
+    padding: 14px 40px;
+    background-color: rgba(196, 226, 242, 0.94);
+    border-width: 6px;
+    border-color: rgb(16, 28, 48);
+    border-radius: 24px;
 }
 
-/* ---------- summary ---------- */
+/* ---------- screens & the original's bottom bar ---------- */
 
-.summary-backdrop {
+.screen {
     position: absolute;
     left: 0;
     top: 0;
     right: 0;
     bottom: 0;
+}
+
+.screen--dim {
+    background-color: rgba(16, 28, 48, 0.32);
     align-items: center;
+}
+
+.bar {
+    position: absolute;
+    left: 40px;
+    right: 40px;
+    bottom: 26px;
+    height: 132px;
+    flex-direction: row;
+    padding: 10px 12px;
+    border-radius: 22px;
+    background-color: rgb(22, 30, 44);
+    border-bottom-width: 6px;
+    border-color: rgb(8, 12, 20);
+}
+
+.slant {
+    flex-grow: 1;
+    flex-basis: 0;
+    margin: 0 -26px 0 0;
+    padding: 0 40px 0 56px;
+    border-width: 0;
+    border-radius: 0;
+    background-color: rgba(0, 0, 0, 0);
     justify-content: center;
-    background-color: rgba(8, 12, 20, 0.45);
+    align-items: flex-start;
 }
 
-.summary {
-    width: 860px;
-    padding: 36px 64px 48px 64px;
-    border-radius: 44px;
-    background-color: rgb(36, 46, 64);
-    border-width: 8px;
-    border-color: rgb(14, 18, 28);
-    align-items: stretch;
+.slant--first {
+    border-top-left-radius: 14px;
+    border-bottom-left-radius: 14px;
+    padding-left: 34px;
 }
 
-.summary-title {
+.slant--last {
+    margin-right: 0;
+}
+
+.slant:hover, .slant:active, .slant:focus, .slant:disabled {
+    background-color: rgba(0, 0, 0, 0);
+    opacity: 1;
+}
+
+.slant-small {
+    font-size: 34px;
+    color: rgb(255, 255, 255);
+    margin: 0 0 -10px 0;
+    padding: 0;
+    text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+}
+
+.slant-big {
+    font-size: 58px;
+    color: rgb(255, 255, 255);
+    margin: 0;
+    padding: 0;
+    text-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+}
+
+/* ---------- stickers (logo and headings): dark letters in a fat light-blue outline ---------- */
+
+.sticker {
+    font-size: 150px;
+    color: rgb(28, 28, 30);
+    -unity-text-outline-width: 9px;
+    -unity-text-outline-color: rgb(127, 192, 222);
+    margin: 0;
+    padding: 0;
+    -unity-text-align: middle-left;
+}
+
+.sticker--small {
     font-size: 96px;
-    -unity-text-align: middle-center;
-    color: rgb(255, 210, 60);
-    text-shadow: 0 6px 0 rgba(0, 0, 0, 0.5);
-    margin: 0 0 6px 0;
+    margin-bottom: -46px;
 }
 
-.summary-title--fail {
-    color: rgb(255, 92, 72);
+.sticker--logo {
+    font-size: 170px;
 }
 
-.stars {
+.logo {
+    position: absolute;
+    right: 70px;
+    top: 40px;
+    align-items: flex-start;
+}
+
+.heading {
+    position: absolute;
+    left: 60px;
+    top: 26px;
+    flex-direction: row;
+    align-items: flex-end;
+}
+
+.heading .sticker--small {
+    margin: 0 18px 30px 0;
+}
+
+.heading--center {
+    position: relative;
+    left: 0;
+    top: 0;
+    margin-top: 300px;
+}
+
+/* ---------- stage cards ---------- */
+
+.stage-cards {
+    position: absolute;
+    left: 60px;
+    right: 60px;
+    top: 270px;
     flex-direction: row;
     justify-content: center;
-    align-items: flex-end;
-    margin-bottom: 18px;
 }
 
-.star {
+.stage-card {
+    width: 600px;
+    height: 470px;
+    margin: 0 30px;
+    border-width: 8px;
+    border-color: rgb(16, 16, 18);
+    border-radius: 34px;
+    background-color: rgb(127, 192, 222);
+    overflow: hidden;
+}
+
+.stage-card:hover {
+    border-color: rgb(60, 70, 90);
+}
+
+.stage-head {
+    height: 250px;
+    background-color: rgb(30, 30, 32);
+    flex-direction: row;
+    align-items: center;
+    padding: 0 26px;
+}
+
+.stage-number {
+    font-size: 180px;
+    color: rgb(255, 255, 255);
+    -unity-text-outline-width: 8px;
+    -unity-text-outline-color: rgb(127, 192, 222);
+    margin: 0 4px 0 0;
+    padding: 0;
+}
+
+.stage-word {
+    font-size: 60px;
+    color: rgb(255, 255, 255);
+    -unity-text-outline-width: 5px;
+    -unity-text-outline-color: rgb(127, 192, 222);
+    margin: 70px 0 0 -6px;
+    padding: 0;
+}
+
+.stage-texts {
+    flex-grow: 1;
+    flex-shrink: 1;
+    align-items: flex-end;
+    justify-content: center;
+    margin-left: 12px;
+}
+
+.stage-title {
+    font-size: 54px;
+    color: rgb(255, 255, 255);
+    margin: 0;
+    padding: 0;
+    -unity-text-align: middle-right;
+}
+
+.stage-sub {
+    font-size: 32px;
+    color: rgb(220, 226, 232);
+    margin: 0;
+    padding: 0;
+    white-space: normal;
+    -unity-text-align: middle-right;
+}
+
+.stage-foot {
+    flex-grow: 1;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+.stage-star {
     width: 120px;
     height: 120px;
-    margin: 0 10px;
+    margin-right: 22px;
     -unity-background-scale-mode: scale-to-fit;
 }
 
-.star--mid {
-    width: 150px;
-    height: 150px;
-}
-
-.summary-line {
-    flex-direction: row;
-    justify-content: space-between;
-    padding: 8px 6px;
-    border-bottom-width: 2px;
-    border-color: rgba(255, 255, 255, 0.08);
-}
-
-.summary-key {
-    font-size: 44px;
-    color: rgb(170, 186, 210);
+.stage-count {
+    font-size: 96px;
+    color: rgb(28, 28, 30);
     margin: 0;
     padding: 0;
 }
 
-.summary-value {
+.stage-lock {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(30, 30, 32, 0.72);
+    align-items: center;
+    justify-content: center;
+}
+
+.lock-icon {
+    width: 150px;
+    height: 150px;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.lock-text {
+    font-size: 44px;
+    color: rgb(255, 255, 255);
+    -unity-text-align: middle-center;
+    margin: 6px 0 0 0;
+    padding: 0;
+    text-shadow: 0 3px 0 rgba(0, 0, 0, 0.5);
+}
+
+/* ---------- level select ---------- */
+
+.stage-badge {
+    position: absolute;
+    right: 60px;
+    top: 50px;
+    width: 560px;
+    height: 170px;
+    border-radius: 26px;
+    background-color: rgb(30, 30, 32);
+    border-width: 6px;
+    border-color: rgb(240, 240, 240);
+    flex-direction: row;
+    align-items: center;
+    padding: 0 26px;
+}
+
+.stage-badge .stage-number {
+    font-size: 130px;
+}
+
+.stage-badge .stage-word {
+    font-size: 56px;
+    margin-top: 40px;
+}
+
+.stage-badge .stage-title {
+    font-size: 50px;
+}
+
+.stage-badge .stage-sub {
+    font-size: 30px;
+}
+
+.level-grid {
+    position: absolute;
+    left: 220px;
+    right: 220px;
+    top: 290px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.level-node {
+    width: 236px;
+    height: 236px;
+    margin: 16px 22px;
+    border-width: 8px;
+    border-color: rgb(16, 16, 18);
+    border-radius: 30px;
+    background-color: rgb(127, 192, 222);
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0 10px 0;
+}
+
+.level-node:hover {
+    background-color: rgb(152, 208, 232);
+}
+
+.level-node--locked {
+    background-color: rgb(150, 170, 182);
+}
+
+.level-node--locked:hover {
+    background-color: rgb(150, 170, 182);
+}
+
+.node-stars {
+    flex-direction: row;
+}
+
+.node-star {
+    width: 44px;
+    height: 44px;
+    margin: 0 3px;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.node-number {
+    font-size: 96px;
+    color: rgb(28, 28, 30);
+    margin: -10px 0 0 0;
+    padding: 0;
+}
+
+.node-points {
+    font-size: 32px;
+    color: rgb(28, 40, 60);
+    margin: 0;
+    padding: 0;
+}
+
+.node-lock {
+    position: absolute;
+    right: -26px;
+    bottom: -20px;
+    width: 104px;
+    height: 104px;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+/* ---------- jump summary: dark card with a white rim and a red points bar ---------- */
+
+.summary-card {
+    width: 860px;
+    margin-top: 60px;
+    padding: 26px 46px 30px 46px;
+    border-radius: 40px;
+    background-color: rgb(30, 30, 32);
+    border-width: 8px;
+    border-color: rgb(244, 244, 244);
+}
+
+.summary-title {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+.summary-face {
+    width: 130px;
+    height: 130px;
+    margin-right: 20px;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.summary-title-small {
     font-size: 48px;
+    color: rgb(255, 255, 255);
+    margin: 0 0 -18px 0;
+    padding: 0;
+}
+
+.summary-title-big {
+    font-size: 96px;
     color: rgb(255, 255, 255);
     margin: 0;
     padding: 0;
 }
 
+.summary-level {
+    font-size: 40px;
+    color: rgb(255, 255, 255);
+    -unity-text-align: middle-center;
+    margin: 10px 0 12px 0;
+}
+
+.summary-line {
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 4px 30px;
+}
+
+.summary-key {
+    font-size: 46px;
+    color: rgb(255, 255, 255);
+    margin: 0;
+    padding: 0;
+}
+
+.summary-value {
+    font-size: 46px;
+    color: rgb(255, 255, 255);
+    margin: 0;
+    padding: 0;
+}
+
+.stars {
+    flex-direction: row;
+    justify-content: center;
+    margin: 8px 0 4px 0;
+}
+
+.star {
+    width: 92px;
+    height: 92px;
+    margin: 0 10px;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
 .summary-record {
-    font-size: 44px;
+    font-size: 40px;
     -unity-text-align: middle-center;
-    color: rgb(120, 230, 120);
-    margin-top: 14px;
+    color: rgb(120, 220, 120);
+    margin: 0 0 6px 0;
 }
 
-.btn {
-    margin-top: 28px;
-    height: 132px;
+.points-bar {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    padding: 6px 36px;
+    border-radius: 22px;
+    background-color: rgb(250, 88, 84);
+    border-width: 5px;
+    border-color: rgb(244, 244, 244);
+}
+
+.points-small {
+    font-size: 38px;
+    color: rgb(255, 255, 255);
+    margin: 0 0 -14px 0;
+    padding: 0;
+}
+
+.points-big {
     font-size: 64px;
-    border-radius: 34px;
-    border-width: 0;
-    border-bottom-width: 10px;
-    background-color: rgb(255, 196, 40);
-    border-color: rgb(196, 128, 10);
-    color: rgb(60, 34, 0);
-    -unity-text-align: middle-center;
+    color: rgb(255, 255, 255);
+    margin: 0;
+    padding: 0;
 }
 
-.btn:hover {
-    background-color: rgb(255, 212, 80);
-}
-
-.btn:active {
-    border-bottom-width: 4px;
-    margin-top: 34px;
+.points-value {
+    font-size: 84px;
+    color: rgb(255, 255, 255);
+    margin: 0;
+    padding: 0;
 }

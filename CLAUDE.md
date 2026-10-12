@@ -12,7 +12,7 @@
 - Оригинал и всё извлечённое: `reference/` (в .gitignore). В Unity чужое только в `src/Assets/_ThirdPartyPlaceholder/` (в .gitignore).
 - Импорт только через `PlaceholderImporter` (меню Stickman Jumper → Import Placeholders); он же пишет таблицу в `reference/PLACEHOLDER_ASSETS.md`.
 - `PlaceholderGuard` валит любую сборку, пока сцены ссылаются на заглушки; тест категории `ReleaseGuard` красный — так задумано.
-- Код/бинарники оригинала не вскрываем (уровни `.landscape` и анимации `.character` зашифрованы — не трогать). Бренд Djinnworks не использовать.
+- Имена классов/методов и строки из `.so` оригинала читать можно (разрешено 2026-10-12), код не копируем. Уровни `.landscape` и анимации `.character` зашифрованы — не вскрываем. Эталон внешнего вида — видео оригинала (см. `reference/ORIGINAL_MECHANICS.md`). Бренд Djinnworks не использовать.
 - Никаких скриншотов/роликов с заглушками наружу.
 
 ## Unity
@@ -22,6 +22,6 @@
   - тесты: `Unity -batchmode -projectPath src -runTests -testPlatform EditMode -testCategory "!ReleaseGuard"`
   - автозаезд: `Unity -batchmode -projectPath src -executeMethod StickmanJumper.EditorTools.SmokeTest.Run -smokeOut DIR` (скриншоты + smoke-summary.txt)
 - Код: `src/Assets/_Game/Scripts` (asmdef StickmanJumper). Правила — чистые классы в `Gameplay/` (JumpSession, FlightModel, Sweep, LandingJudge, Scoring), картинка в `Presentation/`, склейка в `GameRoot`.
-- Цифры — в ScriptableObject `src/Assets/_Game/Config/*.asset` (подсказки на русском). 1 юнит = 1 м, 1 этаж ≈ 1 м, заглушки PPU 50.
+- Цифры — в ScriptableObject `src/Assets/_Game/Config/*.asset` (подсказки на русском). 1 юнит = 1 м, стикмен ≈ 1.9 м, этаж ≈ 2.3 м, заглушки PPU 22, камера далеко (как в оригинале).
 - Грабли 6.6: Play без перезагрузки домена (статику сбрасывать руками), снимки камеры рендерить дважды, после NewScene грузить ассеты заново по пути,
   только новая Input System, русский текст в UI Toolkit — свой TTF (Rubik ExtraBold, OFL).
