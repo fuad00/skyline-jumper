@@ -141,6 +141,14 @@ namespace StickmanJumper
             ListShown?.Invoke();
         }
 
+        /// <summary>Сменили язык: все подписи конструктора — на новом.</summary>
+        public void ApplyLanguage()
+        {
+            _ui.ApplyLanguage();
+            if (ListOpen) RefreshList();
+            if (EditorOpen) RefreshTitle();
+        }
+
         /// <summary>Ушли из конструктора (в меню, в игру).</summary>
         public void Leave()
         {

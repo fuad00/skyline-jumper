@@ -57,6 +57,10 @@ namespace StickmanJumper.UI
         readonly TextField _nameField, _pasteField;
         readonly Label _timeValue, _windValue, _nightValue;
         int _tab;
+        /// <summary>Что сейчас показывают кнопки действий (чтобы переписать их на другом языке).</summary>
+        (Selection selection, bool solid, bool runLeft) _toolsState;
+        /// <summary>Подписи, построенные один раз: <see cref="ApplyLanguage"/> переписывает их на текущем языке.</summary>
+        readonly List<Action> _relabel = new List<Action>();
 
         // List.
         public Action ListBack, NewMap, FromLevel, PasteCode;
@@ -86,8 +90,8 @@ namespace StickmanJumper.UI
             ListScreen.AddToClassList("screen");
             var heading = new VisualElement { pickingMode = PickingMode.Ignore };
             heading.AddToClassList("heading");
-            heading.Add(Text(UIText.MapsSmall, "sticker", "sticker--small"));
-            heading.Add(Text(UIText.MapsBig, "sticker"));
+            heading.Add(Text(() => UIText.MapsSmall, "sticker", "sticker--small"));
+            heading.Add(Text(() => UIText.MapsBig, "sticker"));
             heading.name = "maps-heading";
             ListScreen.Add(heading);
             _cards = new ScrollView(ScrollViewMode.Horizontal);
@@ -132,12 +136,12 @@ namespace StickmanJumper.UI
             _statusChip.Add(_status);
             title.Add(_statusChip);
             top.Add(title);
-            _undo = new IconButton(IconKind.Undo, UIText.Undo, () => Undo?.Invoke());
-            _redo = new IconButton(IconKind.Redo, UIText.Redo, () => Redo?.Invoke());
-            _walls = new IconButton(IconKind.Walls, UIText.Physics, () => ToggleWalls?.Invoke());
-            var gear = new IconButton(IconKind.Gear, UIText.SettingsWord, () => OpenSettings?.Invoke());
-            _share = new IconButton(IconKind.Share, UIText.ShareWord, () => Share?.Invoke());
-            _test = new IconButton(IconKind.Play, UIText.Test, () => Test?.Invoke(), wide: true);
+            _undo = Labeled(new IconButton(IconKind.Undo, UIText.Undo, () => Undo?.Invoke()), () => UIText.Undo);
+            _redo = Labeled(new IconButton(IconKind.Redo, UIText.Redo, () => Redo?.Invoke()), () => UIText.Redo);
+            _walls = Labeled(new IconButton(IconKind.Walls, UIText.Physics, () => ToggleWalls?.Invoke()), () => UIText.Physics);
+            var gear = Labeled(new IconButton(IconKind.Gear, UIText.SettingsWord, () => OpenSettings?.Invoke()), () => UIText.SettingsWord);
+            _share = Labeled(new IconButton(IconKind.Share, UIText.ShareWord, () => Share?.Invoke()), () => UIText.ShareWord);
+            _test = Labeled(new IconButton(IconKind.Play, UIText.Test, () => Test?.Invoke(), wide: true), () => UIText.Test);
             foreach (var b in new[] { _undo, _redo, _walls, gear, _share, _test }) top.Add(b);
             EditorScreen.Add(top);
 
@@ -170,15 +174,15 @@ namespace StickmanJumper.UI
 
             // ---------------------------------------------------------------- map settings
             _settings = Overlay(out var card);
-            card.Add(Text(UIText.MapSettings, "dialog-title"));
+            card.Add(Text(() => UIText.MapSettings, "dialog-title"));
             _nameField = new TextField { maxLength = 40 };
             _nameField.AddToClassList("ed-field");
             _nameField.RegisterCallback<FocusOutEvent>(_ => NameChanged?.Invoke(_nameField.value));
-            card.Add(Row(UIText.NameWord, _nameField));
+            card.Add(Row(() => UIText.NameWord, _nameField));
             _timeValue = Text(string.Empty, "ed-value");
-            card.Add(Row(UIText.TimeWord, Stepper(_timeValue, d => TimeStep?.Invoke(d))));
+            card.Add(Row(() => UIText.TimeWord, Stepper(_timeValue, d => TimeStep?.Invoke(d))));
             _windValue = Text(string.Empty, "ed-value");
-            card.Add(Row(UIText.WindWord, Stepper(_windValue, d => WindStep?.Invoke(d))));
+            card.Add(Row(() => UIText.WindWord, Stepper(_windValue, d => WindStep?.Invoke(d))));
             _nightValue = Text(string.Empty, "ed-value");
             var night = new VisualElement();
             night.AddToClassList("ed-toggle");
@@ -186,34 +190,54 @@ namespace StickmanJumper.UI
             Plate.Dress(night, Plate.Kind.LightShadow, 20f, 5f, UIShapes.Blue);
             night.Add(_nightValue);
             OnTap(night, () => NightToggled?.Invoke());
-            card.Add(Row(UIText.NightWord, night));
+            card.Add(Row(() => UIText.NightWord, night));
             var settingsBar = new VisualElement { pickingMode = PickingMode.Ignore };
             settingsBar.AddToClassList("dialog-bar");
-            settingsBar.Add(new SlantButton(null, UIText.DoneBig, SlantButton.Green, () =>
+            var done = new SlantButton(null, UIText.DoneBig, SlantButton.Green, () =>
             {
                 NameChanged?.Invoke(_nameField.value);
                 SettingsClosed?.Invoke();
-            }, first: true, last: true));
+            }, first: true, last: true);
+            _relabel.Add(() => done.SetLabels(null, UIText.DoneBig));
+            settingsBar.Add(done);
             card.Add(settingsBar);
             EditorScreen.Add(_settings);
 
             // ---------------------------------------------------------------- paste a code by hand
             _pastePanel = Overlay(out var pasteCard);
-            pasteCard.Add(Text(UIText.PasteTitle, "dialog-title"));
-            pasteCard.Add(Text(UIText.PasteHelp, "dialog-text"));
+            pasteCard.Add(Text(() => UIText.PasteTitle, "dialog-title"));
+            pasteCard.Add(Text(() => UIText.PasteHelp, "dialog-text"));
             _pasteField = new TextField { multiline = true, maxLength = 20000 };
             _pasteField.AddToClassList("ed-field");
             _pasteField.AddToClassList("ed-field--big");
             pasteCard.Add(_pasteField);
             var pasteBar = new VisualElement { pickingMode = PickingMode.Ignore };
             pasteBar.AddToClassList("dialog-bar");
-            pasteBar.Add(new SlantButton(UIText.NoSmall, UIText.NoBig, SlantButton.Blue, HidePaste, first: true));
-            pasteBar.Add(new SlantButton(null, UIText.AddBig, SlantButton.Green, () => PasteSubmitted?.Invoke(_pasteField.value), last: true));
+            var cancel = new SlantButton(UIText.NoSmall, UIText.NoBig, SlantButton.Blue, HidePaste, first: true);
+            var add = new SlantButton(null, UIText.AddBig, SlantButton.Green, () => PasteSubmitted?.Invoke(_pasteField.value), last: true);
+            _relabel.Add(() =>
+            {
+                cancel.SetLabels(UIText.NoSmall, UIText.NoBig);
+                add.SetLabels(null, UIText.AddBig);
+            });
+            pasteBar.Add(cancel);
+            pasteBar.Add(add);
             pasteCard.Add(pasteBar);
             ListScreen.Add(_pastePanel);
 
             ShowTab(0);
             SetTools(Selection.None, false, false);
+        }
+
+        /// <summary>
+        /// Сменили язык: переписать подписи, построенные один раз, и перестроить палитру и кнопки действий.
+        /// Список карт, заголовок и настройки карты переписывает <see cref="MapBuilder"/> (у него их данные).
+        /// </summary>
+        public void ApplyLanguage()
+        {
+            foreach (var relabel in _relabel) relabel();
+            ShowTab(_tab);
+            SetTools(_toolsState.selection, _toolsState.solid, _toolsState.runLeft);
         }
 
         void EndPointer(int id, Vector2 position)
@@ -289,6 +313,7 @@ namespace StickmanJumper.UI
         /// <summary>Кнопки действий над палитрой — под то, что выбрано.</summary>
         public void SetTools(Selection selection, bool solid, bool runLeft)
         {
+            _toolsState = (selection, solid, runLeft);
             _tools.Clear();
             switch (selection)
             {
@@ -440,6 +465,20 @@ namespace StickmanJumper.UI
             return l;
         }
 
+        /// <summary>Подпись, которая следует за языком (<see cref="ApplyLanguage"/>).</summary>
+        Label Text(Func<string> text, params string[] classes)
+        {
+            var l = Text(text(), classes);
+            _relabel.Add(() => l.text = text());
+            return l;
+        }
+
+        IconButton Labeled(IconButton button, Func<string> label)
+        {
+            _relabel.Add(() => button.Label = label());
+            return button;
+        }
+
         /// <summary>Тап (а не прокрутка ленты): палец отпущен недалеко от места нажатия.</summary>
         static void OnTap(VisualElement e, Action action)
         {
@@ -470,7 +509,7 @@ namespace StickmanJumper.UI
             return overlay;
         }
 
-        static VisualElement Row(string label, VisualElement value)
+        VisualElement Row(Func<string> label, VisualElement value)
         {
             var row = new VisualElement { pickingMode = PickingMode.Ignore };
             row.AddToClassList("ed-row");
@@ -507,6 +546,7 @@ namespace StickmanJumper.UI
         {
             readonly Plate _plate;
             readonly VectorIcon _icon;
+            readonly Label _label;
             bool _on, _dimmed;
 
             public IconButton(IconKind icon, string label, Action onTap, bool wide = false, bool small = false)
@@ -519,13 +559,22 @@ namespace StickmanJumper.UI
                 _icon = new VectorIcon(icon);
                 _icon.AddToClassList("ed-btn-icon");
                 Add(_icon);
-                if (!string.IsNullOrEmpty(label)) Add(Text(label, "ed-btn-text"));
+                if (!string.IsNullOrEmpty(label))
+                {
+                    _label = Text(label, "ed-btn-text");
+                    Add(_label);
+                }
                 OnTap(this, () => { if (enabledSelf) onTap?.Invoke(); });
             }
 
             public Color Fill
             {
                 set { _plate.Fill = value; _plate.MarkDirtyRepaint(); }
+            }
+
+            public string Label
+            {
+                set { if (_label != null) _label.text = value; }
             }
 
             /// <summary>Включённый переключатель — тёмная плашка и белый значок.</summary>

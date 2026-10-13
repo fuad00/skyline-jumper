@@ -22,6 +22,12 @@ namespace StickmanJumper.EditorTools
                 .OrderBy(p => p)
                 .ToList();
 
+        /// <summary>
+        /// Релиз с картинками оригинала разрешён: владелец получил согласие Djinnworks на изображения (2026-10-13).
+        /// Включают только релизные сборки BuildTools на время своей сборки.
+        /// </summary>
+        public static bool PermittedRelease { get; set; }
+
         public static IEnumerable<string> BuildScenePaths() =>
             EditorBuildSettings.scenes.Where(s => s.enabled && !string.IsNullOrEmpty(s.path)).Select(s => s.path);
 
@@ -39,9 +45,9 @@ namespace StickmanJumper.EditorTools
     }
 
     /// <summary>
-    /// Валит любую сборку игрока, пока в ней есть заглушки. Единственное исключение (решено 2026-10-12):
-    /// Development-сборка для теста на своём телефоне или в симуляторе на этом Mac (BuildTools, путь «…-INTERNAL-TEST…»).
-    /// Релизная сборка с заглушками не собирается никогда.
+    /// Валит любую сборку игрока, пока в ней есть заглушки. Исключения: Development-сборка для теста на своём телефоне или
+    /// в симуляторе на этом Mac (BuildTools, путь «…-INTERNAL-TEST…», 2026-10-12) и релиз BuildTools.Build…Release для
+    /// GitHub — картинки оригинала в нём с разрешения Djinnworks (2026-10-13, <see cref="PlaceholderGuard.PermittedRelease"/>).
     /// </summary>
     public sealed class PlaceholderBuildBlocker : IPreprocessBuildWithReport
     {
@@ -51,6 +57,11 @@ namespace StickmanJumper.EditorTools
         {
             var v = PlaceholderGuard.FindViolations();
             if (v.Count == 0) return;
+            if (PlaceholderGuard.PermittedRelease)
+            {
+                Debug.Log($"[PlaceholderGuard] Release with {v.Count} original assets — images used with Djinnworks' permission.");
+                return;
+            }
             bool development = (report.summary.options & BuildOptions.Development) != 0;
             bool internalTest = report.summary.outputPath.Contains("INTERNAL-TEST");
             if (development && internalTest)

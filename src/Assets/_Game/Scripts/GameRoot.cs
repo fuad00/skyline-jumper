@@ -214,6 +214,7 @@ namespace StickmanJumper
             _save.Data.Language = UIText.Code(lang);
             _save.Persist();
             _ui.ApplyLanguage();
+            _builder.ApplyLanguage();
         }
 
         /// <summary>«Сбросить прогресс» → «Вы уверены?» → да: звёзды и рекорды стёрты.</summary>
