@@ -699,30 +699,38 @@ namespace StickmanJumper.UI
             float s = Mathf.Min(r.width / world.width, r.height / world.height);
             Vector2 off = new Vector2((r.width - world.width * s) * 0.5f, (r.height - world.height * s) * 0.5f);
             Vector2 Map(Vector2 w) => new Vector2(r.x + off.x + (w.x - world.xMin) * s, r.y + r.height - (off.y + (w.y - world.yMin) * s));
+            // The map is scaled to the route; whatever lies beyond it stays inside the frame: dots are pressed to the edge.
+            Vector2 Inside(Vector2 c, float radius) =>
+                new Vector2(Mathf.Clamp(c.x, r.xMin + radius, r.xMax - radius), Mathf.Clamp(c.y, r.yMin + radius, r.yMax - radius));
 
             foreach (var solid in _mapLayout.Solids)
             {
                 if (solid.Kind != SolidKind.Building) continue;
                 var a = Map(new Vector2(solid.Rect.xMin, solid.Rect.yMin));
                 var b = Map(new Vector2(solid.Rect.xMax, solid.Rect.yMax));
+                // Buildings behind the start, past the target or above the frame are cut at the map's edge.
+                var box = Rect.MinMaxRect(Mathf.Max(Mathf.Min(a.x, b.x), r.xMin), Mathf.Max(Mathf.Min(a.y, b.y), r.yMin),
+                    Mathf.Min(Mathf.Max(a.x, b.x), r.xMax), Mathf.Min(Mathf.Max(a.y, b.y), r.yMax));
+                if (box.width <= 0f || box.height <= 0f) continue;
                 p.fillColor = MapBuilding;
                 p.BeginPath();
-                p.MoveTo(new Vector2(a.x, a.y));
-                p.LineTo(new Vector2(b.x, a.y));
-                p.LineTo(new Vector2(b.x, b.y));
-                p.LineTo(new Vector2(a.x, b.y));
+                p.MoveTo(new Vector2(box.xMin, box.yMin));
+                p.LineTo(new Vector2(box.xMax, box.yMin));
+                p.LineTo(new Vector2(box.xMax, box.yMax));
+                p.LineTo(new Vector2(box.xMin, box.yMax));
                 p.ClosePath();
                 p.Fill();
             }
-            Dot(p, Map(new Vector2(_mapLayout.ArrowX, _mapLayout.TargetY + 1.5f)), 7f, MapTarget);
+            Dot(p, Inside(Map(new Vector2(_mapLayout.ArrowX, _mapLayout.TargetY + 1.5f)), 7f), 7f, MapTarget);
             for (int i = 1; i < _mapLayout.Runways.Count; i++) // intermediate platforms
             {
                 var runway = _mapLayout.Runways[i];
-                Dot(p, Map(new Vector2(runway.Strip.center.x, runway.RoofY + 1.5f)), 5f, MapPlatform);
+                Dot(p, Inside(Map(new Vector2(runway.Strip.center.x, runway.RoofY + 1.5f)), 5f), 5f, MapPlatform);
             }
-            if (!float.IsNaN(_mapLastX)) Dot(p, Map(new Vector2(_mapLastX, _mapLayout.RoofY + 1f)), 6f, MapLast);
-            Dot(p, Map(_mapPlayer + Vector2.up), 9f, Color.white);
-            Dot(p, Map(_mapPlayer + Vector2.up), 6f, MapTarget);
+            if (!float.IsNaN(_mapLastX)) Dot(p, Inside(Map(new Vector2(_mapLastX, _mapLayout.RoofY + 1f)), 6f), 6f, MapLast);
+            var player = Inside(Map(_mapPlayer + Vector2.up), 9f);
+            Dot(p, player, 9f, Color.white);
+            Dot(p, player, 6f, MapTarget);
         }
 
         static void Dot(Painter2D p, Vector2 c, float radius, Color color)
