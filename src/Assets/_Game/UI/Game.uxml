@@ -108,6 +108,14 @@
             <ui:VisualElement name="summary-bar" class="bar" picking-mode="Ignore" />
         </ui:VisualElement>
 
+        <!-- ===== settings during play (from the pause or the summary) ===== -->
+        <ui:VisualElement name="game-settings" class="screen screen--dim" picking-mode="Ignore">
+            <ui:VisualElement class="heading heading--center" picking-mode="Ignore">
+                <ui:Label name="game-settings-title" class="sticker" text="настройки" picking-mode="Ignore" />
+            </ui:VisualElement>
+            <ui:VisualElement name="game-settings-bar" class="bar" picking-mode="Ignore" />
+        </ui:VisualElement>
+
         <!-- ===== dialog: «are you sure?» and the map builder stub (blocks touches underneath) ===== -->
         <ui:VisualElement name="dialog" class="screen screen--dim dialog">
             <ui:VisualElement name="dialog-card" class="dialog-card" picking-mode="Ignore">

@@ -133,6 +133,8 @@ namespace StickmanJumper
             _ui.Tapped += () => _tapQueued = true;
             _ui.PlayClicked += () => { _audio.Click(); ShowStageSelect(); };
             _ui.SettingsClicked += () => { _audio.Click(); ShowSettings(); };
+            _ui.GameSettingsClicked += () => { _audio.Click(); _ui.ShowGameSettings(true); };
+            _ui.GameSettingsBackClicked += () => { _audio.Click(); _ui.ShowGameSettings(false); };
             _ui.BuilderClicked += () => { _audio.Click(); ShowMaps(); };
             _ui.LanguageClicked += () => { _audio.Click(); SetLanguage(UIText.Lang == Language.Ru ? Language.En : Language.Ru); };
             _ui.ResetClicked += () => { _audio.Click(); AskResetProgress(); };
@@ -635,6 +637,11 @@ namespace StickmanJumper
                 }
                 // Esc / the phone's back button: close the dialog, or go one screen back.
                 if (kb.escapeKey.wasPressedThisFrame && (_ui.DialogVisible || _ui.Screen != UIScreen.MainMenu)) Back();
+                return;
+            }
+            if (kb.escapeKey.wasPressedThisFrame && _ui.GameSettingsVisible)
+            {
+                _ui.ShowGameSettings(false); // the phone's back button: settings → back to the pause / summary
                 return;
             }
             if (esc && !_ui.SummaryVisible) SetPaused(!Paused);

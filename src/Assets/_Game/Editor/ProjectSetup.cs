@@ -207,7 +207,6 @@ namespace StickmanJumper.EditorTools
             art.Circle = GeneratedArt.Load("Circle");
             art.Limb = GeneratedArt.Load("Limb");
             art.Paper = PlaceholderImporter.LoadSprite("paper") ?? GeneratedArt.Load("Paper");
-            art.FogBand = GeneratedArt.Load("FogBand");
             art.Glow = GeneratedArt.Load("Glow");
             art.Dash = GeneratedArt.Load("Dash");
             art.Star = GeneratedArt.Load("Star");
@@ -228,6 +227,10 @@ namespace StickmanJumper.EditorTools
             };
             art.Head = PlaceholderImporter.LoadSprite("head");
             art.HeadFront = PlaceholderImporter.LoadSprite("head01");
+            art.FaceWellDone = PlaceholderImporter.LoadSprite("faceWellDone");
+            art.FaceDied = PlaceholderImporter.LoadSprite("faceDied");
+            art.FaceMissed = PlaceholderImporter.LoadSprite("faceMissed");
+            art.FaceTimesUp = PlaceholderImporter.LoadSprite("faceTimesUp");
             art.MarkerArrow = PlaceholderImporter.LoadSprite("downArrow");
             var frames = new System.Collections.Generic.List<Sprite>();
             for (int i = 1; i <= 8; i++)

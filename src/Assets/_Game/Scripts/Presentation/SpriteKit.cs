@@ -13,7 +13,7 @@ namespace StickmanJumper.Presentation
         public const int Street = 10;
         public const int Decor = 20;
         public const int Target = 30;
-        public const int Fog = 40;
+        public const int Underground = 40; // covers whatever reaches below the street
         public const int Canopy = 45;
         public const int StickmanBack = 50;
         public const int StickmanBody = 52;

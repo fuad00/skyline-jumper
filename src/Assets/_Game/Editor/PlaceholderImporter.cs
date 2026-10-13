@@ -39,10 +39,13 @@ namespace StickmanJumper.EditorTools
             public readonly bool PolePivot;
             /// <summary>Свой масштаб (пикселей на метр), 0 — общий.</summary>
             public readonly float Ppu;
+            /// <summary>Оставить только первую фигуру слева (мордочка с картинки итога, надпись справа не нужна).</summary>
+            public readonly bool FirstBlob;
 
-            public Item(string atlas, string source, string name, string usage, Vector2 pivot, bool tiled = false, bool polePivot = false, float ppu = 0f)
+            public Item(string atlas, string source, string name, string usage, Vector2 pivot, bool tiled = false, bool polePivot = false, float ppu = 0f, bool firstBlob = false)
             {
                 Ppu = ppu;
+                FirstBlob = firstBlob;
                 Atlas = atlas;
                 Source = source;
                 Name = name;
@@ -119,6 +122,11 @@ namespace StickmanJumper.EditorTools
             new Item(SkylineAtlas, "background0.png", "skyline", "Силуэт города (дальний фон)", Bottom, true),
             // Crumpled graph paper: 1024 px tile, 20 px cells → a cell ≈ 1.3 m (stickman ≈ 1.5 cells, like the original).
             new Item(null, "backSquare-hd.png", "paper", "Мятый тетрадный лист (фон)", Center, true, false, 15.4f),
+            // The summary titles: a face on the left, the words on the right (ours are drawn by the UI) — keep the face only.
+            new Item(null, "summaryWelldone-hd.png", "faceWellDone", "Мордочка на итоге: сел на цель", Center, firstBlob: true),
+            new Item(null, "summaryYouDied-hd.png", "faceDied", "Мордочка на итоге: разбился", Center, firstBlob: true),
+            new Item(null, "summaryMissedPlatform-hd.png", "faceMissed", "Мордочка на итоге: сел мимо цели", Center, firstBlob: true),
+            new Item(null, "summaryTimesUp-hd.png", "faceTimesUp", "Мордочка на итоге: время вышло", Center, firstBlob: true),
         };
 
         public static readonly (string Source, string Usage)[] Sounds =
@@ -165,6 +173,7 @@ namespace StickmanJumper.EditorTools
                 if (item.Atlas == null)
                 {
                     File.Copy(Path.Combine(src, item.Source), outPath, true);
+                    if (item.FirstBlob) CropFirstBlob(outPath);
                     continue;
                 }
                 if (!atlases.TryGetValue(item.Atlas, out var atlas))
@@ -274,6 +283,37 @@ namespace StickmanJumper.EditorTools
             settings.spriteMeshType = item.Tiled ? SpriteMeshType.FullRect : SpriteMeshType.Tight;
             importer.SetTextureSettings(settings);
             importer.SaveAndReimport();
+        }
+
+        /// <summary>
+        /// Обрезать картинку по первому пустому столбцу после фигуры слева. Фигура не уже 0.8 высоты: так палец у
+        /// мордочки «отлично» не отрезается от неё, даже если между ними щель.
+        /// </summary>
+        static void CropFirstBlob(string path)
+        {
+            var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+            tex.LoadImage(File.ReadAllBytes(path));
+            var px = tex.GetPixels32();
+            int w = tex.width, h = tex.height, end = w;
+            bool seen = false;
+            for (int x = 0; x < w; x++)
+            {
+                bool empty = true;
+                for (int y = 0; y < h && empty; y++)
+                    if (px[y * w + x].a > 8) empty = false;
+                if (!empty) seen = true;
+                else if (seen && x >= h * 0.8f)
+                {
+                    end = x;
+                    break;
+                }
+            }
+            var crop = new Texture2D(end, h, TextureFormat.RGBA32, false);
+            crop.SetPixels(tex.GetPixels(0, 0, end, h));
+            crop.Apply();
+            File.WriteAllBytes(path, crop.EncodeToPNG());
+            UnityEngine.Object.DestroyImmediate(tex);
+            UnityEngine.Object.DestroyImmediate(crop);
         }
 
         /// <summary>Опора в низ древка флажка: самый заполненный столбец, самая нижняя непрозрачная строка.</summary>

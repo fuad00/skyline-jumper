@@ -185,8 +185,17 @@
 }
 
 .screen--dim {
-    background-color: rgba(16, 28, 48, 0.32);
     align-items: center;
+}
+
+/* The dimming itself: a layer that GameUI stretches past the safe area to the screen edges. */
+.dim-layer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(16, 28, 48, 0.32);
 }
 
 .bar {

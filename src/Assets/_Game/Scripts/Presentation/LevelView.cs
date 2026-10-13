@@ -6,8 +6,8 @@ using UnityEngine;
 namespace StickmanJumper.Presentation
 {
     /// <summary>
-    /// Рисует уровень в стиле оригинала: тетрадный лист в клетку, серый силуэт города, туман внизу, здания из кусков
-    /// фасада, улица. Плюс подсказки для игрока: линейка на крыше (метры от края), зелёный флажок — откуда бежал в
+    /// Рисует уровень в стиле оригинала: тетрадный лист в клетку, серый силуэт города, здания из кусков
+    /// фасада, улица (тумана перед домами у оригинала нет). Плюс подсказки для игрока: линейка на крыше (метры от края), зелёный флажок — откуда бежал в
     /// прошлый раз, красный флажок цели и пунктир от него вверх во время прыжка. Ставит коллайдеры для ragdoll.
     /// </summary>
     public sealed class LevelView
@@ -30,8 +30,8 @@ namespace StickmanJumper.Presentation
         // The silhouette texture is already see-through; only darken it, like the grey city on the original's paper.
         static readonly Color SkylineTint = new Color(0.42f, 0.42f, 0.45f, 1f);
         static readonly Color Asphalt = new Color(0.36f, 0.36f, 0.38f);
-        // Below the street everything melts into white haze, like the original (no dark slab at the bottom).
-        static readonly Color AsphaltDeep = new Color(0.93f, 0.93f, 0.91f);
+        // Below the street: the camera never goes there (like the original); this only hides pictures that reach under it.
+        static readonly Color AsphaltDeep = new Color(0.3f, 0.3f, 0.32f);
         static readonly Color Curb = new Color(0.62f, 0.62f, 0.62f);
         static readonly Color MarkerInk = new Color(0.1f, 0.1f, 0.12f, 1f); // the original's markers are dark on the paper
         const int MarkerStep = 5;
@@ -106,7 +106,6 @@ namespace StickmanJumper.Presentation
                     for (int i = 0; i < level.Others.Length; i++) BuildBuilding($"Building {i + 1}", level.Others[i]);
                 BuildDecor(level);
             }
-            if (!_night) BuildFog();
             BuildRuler();
             BuildTarget();
             BuildPlatformFlags();
@@ -230,34 +229,6 @@ namespace StickmanJumper.Presentation
             }
         }
 
-        /// <summary>Туман у земли, как в оригинале: прикрывает низ домов.</summary>
-        void BuildFog()
-        {
-            var layer = new GameObject("Fog").transform;
-            layer.SetParent(_root, false);
-            float x0 = _layout.Overview.xMin - 70f, x1 = _layout.Overview.xMax + 70f;
-            if (_art.FogBand != null)
-            {
-                // A target on the street (common in the original's levels) must stay visible: keep the fog low there.
-                bool streetTarget = _layout.TargetY < 3f;
-                var band = _kit.Make("Band", layer, _art.FogBand, SortOrder.Fog, new Color(0.96f, 0.96f, 0.94f, streetTarget ? 0.7f : 0.9f));
-                Vector2 size = _art.FogBand.bounds.size;
-                band.transform.localScale = new Vector3((x1 - x0) / size.x, (streetTarget ? 3.5f : 9f) / size.y, 1f);
-                SpriteKit.PlaceBottomCenter(band, (x0 + x1) * 0.5f, -1.3f);
-            }
-            if (_art.Clouds == null || _art.Clouds.Length == 0) return;
-            var rng = new System.Random(11);
-            for (float x = x0; x < x1; x += 14f + (float)rng.NextDouble() * 10f)
-            {
-                var sprite = _art.Clouds[rng.Next(_art.Clouds.Length)];
-                if (sprite == null) continue;
-                var r = _kit.Make("FogCloud", layer, sprite, SortOrder.Fog, new Color(1f, 1f, 1f, 0.7f));
-                float s = 0.55f + (float)rng.NextDouble() * 0.35f;
-                r.transform.localScale = new Vector3(s, s * 0.7f, 1f);
-                SpriteKit.PlaceBottomCenter(r, x, -2.5f + (float)rng.NextDouble() * 1.5f);
-            }
-        }
-
         // ------------------------------------------------------------------ street & buildings
 
         void BuildStreet()
@@ -267,7 +238,7 @@ namespace StickmanJumper.Presentation
             float x0 = _layout.Overview.xMin - 150f, x1 = _layout.Overview.xMax + 150f;
             _kit.Box("Curb", street, Rect.MinMaxRect(x0, -0.4f, x1, 0f), _night ? new Color(0.22f, 0.22f, 0.24f) : Curb, SortOrder.Street + 1);
             _kit.Box("Asphalt", street, Rect.MinMaxRect(x0, -1.2f, x1, -0.4f), _night ? new Color(0.12f, 0.12f, 0.13f) : Asphalt, SortOrder.Street);
-            _kit.Box("Underground", street, Rect.MinMaxRect(x0, -60f, x1, -1.2f), _night ? Color.black : AsphaltDeep, SortOrder.Fog + 1);
+            _kit.Box("Underground", street, Rect.MinMaxRect(x0, -60f, x1, -1.2f), _night ? Color.black : AsphaltDeep, SortOrder.Underground);
         }
 
         /// <summary>

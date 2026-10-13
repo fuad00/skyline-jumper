@@ -58,6 +58,7 @@ namespace StickmanJumper.EditorTools
             _pendingSnap = null;
             Shots.Clear();
             Armed.Clear();
+            StepAt.Clear();
             Lines.Clear();
 
             string outDir = Path.GetFullPath(ArgValue("-smokeOut") ?? "Logs/Smoke");
@@ -226,8 +227,14 @@ namespace StickmanJumper.EditorTools
                         Next();
                     }
                     break;
-                case 19:
-                    if (Wait(0.6)) { Snap("13_summary_died"); Next(); }
+                case 19: // the summary, then the settings over it and back
+                    if (Steps("summarySettings",
+                            (0.6, () => Snap("13_summary_died")),
+                            (0.5, () => g.UI.ShowGameSettings(true)),
+                            (0.5, () => SnapSettings(g, "13b_summary_settings")),
+                            (0.5, () => g.UI.ShowGameSettings(false)),
+                            (0.2, () => { if (!g.UI.SummaryVisible || g.UI.GameSettingsVisible) Fail("closing the settings did not bring the summary back"); })))
+                        Next();
                     break;
                 case 20:
                     g.Autopilot = new Autopilot { NeverJump = true, DesiredRunUp = 6f };
@@ -278,8 +285,18 @@ namespace StickmanJumper.EditorTools
                 case 23: // pause bar
                     if (Wait(0.5)) { g.SetPaused(true); Next(); }
                     break;
-                case 24:
-                    if (Wait(0.3)) { Snap("15_pause"); g.SetPaused(false); Next(); }
+                case 24: // the pause, then the settings over it and back
+                    if (Steps("pauseSettings",
+                            (0.3, () => Snap("15_pause")),
+                            (0.5, () => g.UI.ShowGameSettings(true)),
+                            (0.5, () => SnapSettings(g, "15b_pause_settings")),
+                            (0.5, () => g.UI.ShowGameSettings(false)),
+                            (0.2, () =>
+                            {
+                                if (!g.UI.PauseVisible || g.UI.GameSettingsVisible) Fail("closing the settings did not bring the pause back");
+                                g.SetPaused(false);
+                            })))
+                        Next();
                     break;
                 case 25: // level select after progress: level 1 has stars, level 2 is unlocked
                     g.ShowLevelSelect(0);
@@ -817,6 +834,28 @@ namespace StickmanJumper.EditorTools
             File.WriteAllText(Path.Combine(outDir, "smoke-summary.txt"), string.Join("\n", Lines) + $"\nexit code {code}\n");
             if (Application.isBatchMode) EditorApplication.Exit(code);
             else EditorApplication.ExitPlaymode();
+        }
+
+        static readonly Dictionary<string, (int step, double at)> StepAt = new Dictionary<string, (int, double)>();
+
+        /// <summary>Шаги внутри одной фазы: каждый — через свою задержку после предыдущего (не больше одного за кадр). true — все сделаны.</summary>
+        static bool Steps(string key, params (double after, System.Action act)[] steps)
+        {
+            double now = EditorApplication.timeSinceStartup;
+            if (!StepAt.TryGetValue(key, out var st)) st = (0, now);
+            if (st.step < steps.Length && now - st.at >= steps[st.step].after)
+            {
+                steps[st.step].act();
+                st = (st.step + 1, now);
+            }
+            StepAt[key] = st;
+            return st.step >= steps.Length;
+        }
+
+        static void SnapSettings(GameRoot g, string name)
+        {
+            if (!g.UI.GameSettingsVisible) Fail("the settings did not open over the " + (g.UI.PauseVisible ? "pause" : "summary"));
+            Snap(name);
         }
 
         static bool Wait(double seconds)

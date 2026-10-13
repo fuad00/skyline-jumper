@@ -57,7 +57,7 @@ namespace StickmanJumper.UI
         static readonly Color MapPlatform = new Color(1f, 0.55f, 0.1f, 1f);
 
         readonly ArtBank _art;
-        readonly VisualElement _root, _hud, _menu, _menuBar, _settingsBar, _stageScreen, _levelScreen, _summary, _pauseOverlay;
+        readonly VisualElement _root, _hud, _menu, _menuBar, _settingsBar, _stageScreen, _levelScreen, _summary, _pauseOverlay, _gameSettings;
         readonly VisualElement _dialog, _dialogBar;
         readonly Label _dialogTitle, _dialogText;
         readonly VisualElement _minimap, _windFill, _windArrow, _stageCards, _levelGrid, _levelBadge, _summaryFace;
@@ -91,12 +91,20 @@ namespace StickmanJumper.UI
         /// <summary>Подпись первой кнопки паузы и итога: «в МЕНЮ», а для карт — «в РЕДАКТОР» / «к КАРТАМ».</summary>
         Func<string> _menuSmall = () => UIText.MenuSmall, _menuBig = () => UIText.MenuBig;
 
+        /// <summary>Отступы безопасной зоны в точках панели (слева, сверху, справа, снизу): за них тянем затемнение и нижние панели.</summary>
+        Vector4 _insets = new Vector4(-1f, 0f, 0f, 0f);
+        bool _bleedDirty = true;
+        /// <summary>На сколько нижняя панель уходит под край экрана (как bottom у .bar в USS): видны только кнопки.</summary>
+        const float BarSink = 34f;
+
         LevelLayout _mapLayout;
         Vector2 _mapPlayer;
         float _mapLastX = float.NaN;
 
         public event Action Tapped, PlayClicked, SoundClicked, MusicClicked, BackClicked;
         public event Action SettingsClicked, BuilderClicked, LanguageClicked, ResetClicked;
+        /// <summary>Настройки во время игры (с паузы или итога) открыть / закрыть.</summary>
+        public event Action GameSettingsClicked, GameSettingsBackClicked;
         /// <summary>Секрет: «сбросить прогресс» держали 5 секунд — открыть всё для проверки карт.</summary>
         public event Action UnlockAllHeld;
         public event Action MenuClicked, RetryClicked, NextClicked, ContinueClicked, PauseClicked, ZoomClicked;
@@ -106,6 +114,8 @@ namespace StickmanJumper.UI
         public bool SummaryVisible => Screen == UIScreen.Summary;
         public bool PauseVisible { get; private set; }
         public bool DialogVisible { get; private set; }
+        /// <summary>Открыты настройки поверх паузы или итога.</summary>
+        public bool GameSettingsVisible { get; private set; }
 
         public GameUI(VisualElement root, ArtBank art)
         {
@@ -123,6 +133,7 @@ namespace StickmanJumper.UI
             _levelScreen = root.Q<VisualElement>("level-screen");
             _summary = root.Q<VisualElement>("summary");
             _pauseOverlay = root.Q<VisualElement>("pause-overlay");
+            _gameSettings = root.Q<VisualElement>("game-settings");
             _minimap = root.Q<VisualElement>("minimap");
             _windFill = root.Q<VisualElement>("wind-fill");
             _windArrow = root.Q<VisualElement>("wind-arrow");
@@ -152,6 +163,7 @@ namespace StickmanJumper.UI
             root.Q<Label>("logo-bottom").text = UIText.LogoBottom;
             _texts[root.Q<Label>("wind-label")] = () => UIText.Wind;
             _texts[root.Q<Label>("pause-title")] = () => UIText.Pause;
+            _texts[root.Q<Label>("game-settings-title")] = () => UIText.SettingsTitle;
             _texts[root.Q<Label>("stage-heading-small")] = () => UIText.Choose;
             _texts[root.Q<Label>("stage-heading-big")] = () => UIText.StageWord;
             _texts[root.Q<Label>("level-heading-small")] = () => UIText.Choose;
@@ -172,7 +184,7 @@ namespace StickmanJumper.UI
             _clock = new ClockDial();
             root.Q<VisualElement>("clock-slot").Add(_clock);
             Plate.Dress(root.Q<VisualElement>("dialog-card"), Plate.Kind.Dark, 40f, 8f);
-            foreach (var bar in new[] { "menu-bar", "settings-bar", "stage-bar", "level-bar", "pause-bar", "summary-bar" })
+            foreach (var bar in new[] { "menu-bar", "settings-bar", "stage-bar", "level-bar", "pause-bar", "summary-bar", "game-settings-bar" })
                 Plate.Dress(root.Q<VisualElement>(bar), Plate.Kind.Dark, 24f, 7f);
 
             // Bottom bars, like the original: 5 coloured slanted cells on a dark plate, blanks fill the rest.
@@ -192,21 +204,29 @@ namespace StickmanJumper.UI
             Bar(root.Q<VisualElement>("stage-bar"), Btn(null, () => UIText.Back, SlantButton.Red, () => BackClicked?.Invoke(), first: true));
             Bar(root.Q<VisualElement>("level-bar"), Btn(null, () => UIText.Back, SlantButton.Red, () => BackClicked?.Invoke(), first: true));
 
-            // Same cells as the original's pause: menu first, retry fourth, continue last.
+            // Same cells as the original's pause: menu first, retry fourth, continue last; ours adds settings second.
             var pauseBar = root.Q<VisualElement>("pause-bar");
             pauseBar.Add(Btn(() => _menuSmall(), () => _menuBig(), SlantButton.Red, () => MenuClicked?.Invoke(), first: true));
-            pauseBar.Add(SlantButton.Blank());
+            pauseBar.Add(Btn(null, () => UIText.SettingsBig, SlantButton.Blue, () => GameSettingsClicked?.Invoke()));
             pauseBar.Add(SlantButton.Blank());
             pauseBar.Add(Btn(() => UIText.RetrySmall, () => UIText.RetryBig, SlantButton.Blue, () => RetryClicked?.Invoke()));
             pauseBar.Add(Btn(() => UIText.ContinueSmall, () => UIText.ContinueBig, SlantButton.Green, () => ContinueClicked?.Invoke(), last: true));
 
             var summaryBar = root.Q<VisualElement>("summary-bar");
             summaryBar.Add(Btn(() => _menuSmall(), () => _menuBig(), SlantButton.Red, () => MenuClicked?.Invoke(), first: true));
-            summaryBar.Add(SlantButton.Blank());
+            summaryBar.Add(Btn(null, () => UIText.SettingsBig, SlantButton.Blue, () => GameSettingsClicked?.Invoke()));
             summaryBar.Add(SlantButton.Blank());
             summaryBar.Add(Btn(() => UIText.RetrySmall, () => UIText.RetryBig, SlantButton.Blue, () => RetryClicked?.Invoke()));
             _nextButton = Btn(() => UIText.NextSmall, () => UIText.NextBig, SlantButton.Green, () => NextClicked?.Invoke(), last: true);
             summaryBar.Add(_nextButton);
+
+            // Settings during play: the main menu's settings without «reset progress» (that belongs to the menu).
+            var gameSettingsBar = root.Q<VisualElement>("game-settings-bar");
+            gameSettingsBar.Add(Btn(null, () => UIText.Back, SlantButton.Red, () => GameSettingsBackClicked?.Invoke(), first: true));
+            gameSettingsBar.Add(Btn(() => UIText.SoundSmall, () => _soundOn ? UIText.On : UIText.Off, SlantButton.Blue, () => SoundClicked?.Invoke()));
+            gameSettingsBar.Add(Btn(() => UIText.MusicSmall, () => _musicOn ? UIText.On : UIText.Off, SlantButton.Blue, () => MusicClicked?.Invoke()));
+            gameSettingsBar.Add(Btn(() => UIText.LanguageSmall, () => UIText.LanguageBig, SlantButton.Blue, () => LanguageClicked?.Invoke()));
+            gameSettingsBar.Add(SlantButton.Blank(last: true));
 
             _zoom.clicked += () => ZoomClicked?.Invoke();
             root.Q<Button>("pause").clicked += () => PauseClicked?.Invoke();
@@ -214,7 +234,6 @@ namespace StickmanJumper.UI
             SetIcon(_windArrow, art.IconWind, "›");
             SetIcon(root.Q<VisualElement>("icon-zoom"), art.IconZoom, "+");
             SetIcon(root.Q<VisualElement>("icon-pause"), art.IconPause, "II");
-            if (art.HeadFront != null) _summaryFace.style.backgroundImage = new StyleBackground(art.HeadFront);
 
             _minimap.generateVisualContent += DrawMinimap;
 
@@ -226,6 +245,7 @@ namespace StickmanJumper.UI
             });
 
             ApplyLanguage();
+            Bleed();
             ShowPause(false);
             HideDialog();
             Show(UIScreen.None);
@@ -272,17 +292,46 @@ namespace StickmanJumper.UI
             return false;
         }
 
-        /// <summary>Вырез экрана и скруглённые углы телефона: всё содержимое интерфейса держим внутри безопасной зоны.</summary>
+        /// <summary>
+        /// Вырез экрана и скруглённые углы телефона: всё содержимое интерфейса держим внутри безопасной зоны.
+        /// А затемнение и тёмные нижние панели — во весь экран, иначе по краям видны светлые полосы.
+        /// </summary>
         public void ApplySafeArea(Rect safe, int screenW, int screenH)
         {
             float w = _root.parent != null ? _root.parent.resolvedStyle.width : 0f;
             float h = _root.parent != null ? _root.parent.resolvedStyle.height : 0f;
             if (w <= 1f || h <= 1f || screenW <= 0 || screenH <= 0) return;
             float sx = w / screenW, sy = h / screenH;
-            _root.style.left = safe.xMin * sx;
-            _root.style.right = (screenW - safe.xMax) * sx;
-            _root.style.top = (screenH - safe.yMax) * sy;
-            _root.style.bottom = safe.yMin * sy;
+            var insets = new Vector4(safe.xMin * sx, (screenH - safe.yMax) * sy, (screenW - safe.xMax) * sx, safe.yMin * sy);
+            if (insets == _insets && !_bleedDirty) return;
+            _insets = insets;
+            _root.style.left = insets.x;
+            _root.style.top = insets.y;
+            _root.style.right = insets.z;
+            _root.style.bottom = insets.w;
+            Bleed();
+        }
+
+        /// <summary>Затемнение каждого затемняющего экрана — отдельный слой, вылезающий за безопасную зону; нижние панели — до низа экрана.</summary>
+        void Bleed()
+        {
+            _bleedDirty = false;
+            var inset = new Vector4(Mathf.Max(0f, _insets.x), _insets.y, _insets.z, _insets.w);
+            _root.Query<VisualElement>(className: "screen--dim").ForEach(screen =>
+            {
+                var dim = screen.childCount > 0 && screen[0].ClassListContains("dim-layer") ? screen[0] : null;
+                if (dim == null)
+                {
+                    dim = new VisualElement { pickingMode = PickingMode.Ignore };
+                    dim.AddToClassList("dim-layer");
+                    screen.Insert(0, dim);
+                }
+                dim.style.left = -inset.x;
+                dim.style.top = -inset.y;
+                dim.style.right = -inset.z;
+                dim.style.bottom = -inset.w;
+            });
+            _root.Query<VisualElement>(className: "bar").ForEach(bar => bar.style.bottom = -BarSink - inset.w);
         }
 
         static void Display(VisualElement e, bool show) => e.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
@@ -293,6 +342,7 @@ namespace StickmanJumper.UI
             _root.Insert(_root.IndexOf(_dialog), element);
             _extraScreens.Add((screen, element));
             Display(element, Screen == screen);
+            Bleed();
         }
 
         /// <summary>Куда ведёт первая кнопка паузы и итога (null — обычное «в МЕНЮ»).</summary>
@@ -308,6 +358,9 @@ namespace StickmanJumper.UI
         public void Show(UIScreen screen)
         {
             Screen = screen;
+            GameSettingsVisible = false;
+            Display(_gameSettings, false);
+            Display(_pauseOverlay, PauseVisible);
             Display(_menu, screen == UIScreen.MainMenu || screen == UIScreen.Settings);
             Display(_menuBar, screen != UIScreen.Settings);
             Display(_settingsBar, screen == UIScreen.Settings);
@@ -361,7 +414,18 @@ namespace StickmanJumper.UI
         public void ShowPause(bool show)
         {
             PauseVisible = show;
-            Display(_pauseOverlay, show);
+            if (!show) GameSettingsVisible = false;
+            Display(_gameSettings, GameSettingsVisible);
+            Display(_pauseOverlay, show && !GameSettingsVisible);
+        }
+
+        /// <summary>Настройки поверх паузы или итога: пока они открыты, пауза / итог спрятаны, «назад» возвращает их.</summary>
+        public void ShowGameSettings(bool show)
+        {
+            GameSettingsVisible = show && (PauseVisible || Screen == UIScreen.Summary);
+            Display(_gameSettings, GameSettingsVisible);
+            Display(_pauseOverlay, PauseVisible && !GameSettingsVisible);
+            Display(_summary, Screen == UIScreen.Summary && !GameSettingsVisible);
         }
 
         /// <summary>
@@ -690,6 +754,9 @@ namespace StickmanJumper.UI
         {
             Show(UIScreen.Summary);
             var (small, big) = UIText.Title(outcome);
+            var face = _art.Face(outcome);
+            _summaryFace.style.backgroundImage = face != null ? new StyleBackground(face) : new StyleBackground();
+            Display(_summaryFace, face != null);
             _titleSmall.text = small;
             _titleBig.text = big;
             _levelLine.text = levelLine;

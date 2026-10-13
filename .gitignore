@@ -69,3 +69,7 @@ CLAUDE.local.md
 
 # === Временная папка нативной сборки Android (CMake/Gradle), пересоздаётся при каждой сборке APK ===
 /src/.utmp/
+
+# === Личные заметки владельца (справка по оригиналу) — не публикуем ===
+/GAMEPLAY_REFERENCE.md
+/PROMPT_FOR_CLAUDE.md

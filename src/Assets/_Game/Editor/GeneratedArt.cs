@@ -31,9 +31,6 @@ namespace StickmanJumper.EditorTools
                 (x, y) => White(Capsule(x, y, 16, 16, 16, 48, 15.5f)));
             // Crumpled graph paper, tileable: 512 px = 8 cells of 64 px; PPU 40 → a cell is 1.6 m.
             Make("Paper", 512, 512, 40f, new Vector2(0.5f, 0.5f), Vector4.zero, true, Paper);
-            // Ground haze: white, fading out upwards.
-            Make("FogBand", 4, 128, 128f, new Vector2(0.5f, 0f), Vector4.zero, true, (x, y) =>
-                new Color(1f, 1f, 1f, Mathf.Pow(1f - y / 127f, 1.6f)));
             // One dash of the guide line above the target flag: 40 px red, 24 px gap; PPU 80 → 0.5 m + 0.3 m.
             Make("Dash", 8, 64, 80f, new Vector2(0.5f, 0f), Vector4.zero, true, (x, y) =>
                 y < 40 ? new Color(0.86f, 0.1f, 0.1f, 0.9f) : Color.clear);

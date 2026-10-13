@@ -56,6 +56,7 @@ namespace StickmanJumper.UI
 
         public static string Wind => T("ВЕТЕР", "WIND");
         public static string Pause => T("пауза", "pause");
+        public static string SettingsTitle => T("настройки", "settings");
         public static string Choose => T("Выбери", "select");
         public static string StageWord => T("этап", "stage");
         public static string LevelWord => T("уровень", "level");

@@ -32,8 +32,6 @@ namespace StickmanJumper.Config
         public Sprite Limb;
         [Tooltip("Тетрадный лист в клетку (фон, повторяется плиткой).")]
         public Sprite Paper;
-        [Tooltip("Белая дымка у земли (сверху прозрачная).")]
-        public Sprite FogBand;
         [Tooltip("Мягкий круглый свет (ночью — ореол за стикменом).")]
         public Sprite Glow;
         [Tooltip("Одна чёрточка пунктира от флажка цели вверх (повторяется плиткой).")]
@@ -110,6 +108,27 @@ namespace StickmanJumper.Config
         public Sprite IconPause;
         [Tooltip("Замок на закрытых этапах и уровнях.")]
         public Sprite IconLock;
+
+        [Header("Итог прыжка")]
+        [Tooltip("Мордочка на итоге, как в оригинале: сел на цель, разбился, сел мимо, время вышло. Пусто — голова анфас.")]
+        public Sprite FaceWellDone;
+        public Sprite FaceDied;
+        public Sprite FaceMissed;
+        public Sprite FaceTimesUp;
+
+        /// <summary>Мордочка для итога прыжка (своя на каждый исход; нет картинки — голова анфас или ничего).</summary>
+        public Sprite Face(Core.JumpOutcome outcome)
+        {
+            var face = outcome switch
+            {
+                Core.JumpOutcome.WellDone => FaceWellDone,
+                Core.JumpOutcome.Died => FaceDied,
+                Core.JumpOutcome.MissedPlatform => FaceMissed,
+                Core.JumpOutcome.TimesUp => FaceTimesUp,
+                _ => null,
+            };
+            return face != null ? face : HeadFront;
+        }
 
         public BuildingArt Building(BuildingStyle style)
         {
